@@ -226,7 +226,7 @@ function loadTrack(index) {
         canvasVideo.load();
         // Verifica se il video può essere caricato
         canvasVideo.addEventListener('loadeddata', () => {
-            canvasVideo.classList.add('active');
+        canvasVideo.classList.add('active');
         }, { once: true });
         canvasVideo.addEventListener('error', () => {
             // Se il video non esiste, rimuovi la classe active
