@@ -7,7 +7,21 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
+    <!-- HERO SECTION -->
+    <div id="heroSection" class="hero-section">
+        <div class="hero-content">
+            <img src="images/Album cover front.jpg" alt="Album Cover" class="hero-cover">
+            <h1 class="hero-title">Our Soundtrack</h1>
+            <button id="startPlayerBtn" class="start-button">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <span>Inizia ad ascoltare</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="container" id="mainContainer" style="display: none;">
         <!-- SIDEBAR SINISTRA - PLAYLIST -->
         <aside class="sidebar">
             <div class="sidebar-header">

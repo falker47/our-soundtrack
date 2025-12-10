@@ -17,8 +17,10 @@
 
 // Lista dei file MP3 nella cartella music
 const musicFiles = [
-    "Aerosmith - I Don't Want to Miss a Thing.mp3",
+    "Lady Gaga - Die With A Smile.mp3",
     "Alex Warren - Eternity.mp3",
+    "Tom Odell - Grow Old with Me.mp3",
+    "Aerosmith - I Don't Want to Miss a Thing.mp3",
     "Bill Medley & Jennifer Warnes - (I've had) The Time Of My Life.mp3",
     "Bruno Mars - Just the Way you are.mp3",
     "Ed Sheeran - Perfect Symphony (ft. Andrea Bocelli).mp3",
@@ -29,14 +31,12 @@ const musicFiles = [
     "Imagine Dragons - Next To Me.mp3",
     "John Legend - All of Me.mp3",
     "Jovanotti - Come Musica.mp3",
-    "Lady Gaga - Die With A Smile.mp3",
     "Laura Chiatti - Il mio nuovo sogno.mp3",
     "Luca Laurenti - La mia Evangeline.mp3",
     "Marvin Berry and the Starlighters - Earth Angel.mp3",
     "Queen - Love of My Life.mp3",
     "Sebastian Yatra - Dos Oruguitas.mp3",
     "Simone Iuè - In ogni parte del mio corazon.mp3",
-    "Tom Odell - Grow Old with Me.mp3",
     "Ultimo - Poesia senza veli.mp3",
     "Zac Efron - Rewrite The Stars.mp3"
 ];
@@ -84,6 +84,7 @@ const tracks = musicFiles.map((fileName, index) => {
     
     return {
         title: trackTitle,
+        songTitle: parsed.title || fileName, // Solo il titolo della canzone
         file: `music/${fileName}`,
         cover: coverPath, // L'immagine verrà verificata quando viene caricata
         canvas: videoPath // Il video verrà verificato quando viene caricato
@@ -148,7 +149,7 @@ function renderTrackList() {
         
         li.innerHTML = `
             <span class="track-number">${String(index + 1).padStart(2, '0')}</span>
-            <span class="track-title-item">${track.title}</span>
+            <span class="track-title-item">${track.songTitle}</span>
         `;
         
         li.addEventListener('click', () => {
@@ -452,7 +453,29 @@ function setupEventListeners() {
 }
 
 // ============================================
+// HERO SECTION
+// ============================================
+const heroSection = document.getElementById('heroSection');
+const mainContainer = document.getElementById('mainContainer');
+const startPlayerBtn = document.getElementById('startPlayerBtn');
+
+function showPlayer() {
+    heroSection.classList.add('hidden');
+    setTimeout(() => {
+        mainContainer.style.display = 'flex';
+        // Inizializza il player dopo che la hero è nascosta
+        if (!window.playerInitialized) {
+            init();
+            window.playerInitialized = true;
+        }
+    }, 300);
+}
+
+startPlayerBtn.addEventListener('click', showPlayer);
+
+// ============================================
 // AVVIO
 // ============================================
-init();
+// Non inizializzare automaticamente, aspetta il click sulla hero
+// init();
 
