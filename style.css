@@ -298,11 +298,20 @@ body {
     z-index: 1;
 }
 
+.track-artist {
+    font-size: 18px;
+    font-weight: 400;
+    color: whitesmoke;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+
 .track-title {
     font-size: 32px;
     font-weight: 600;
     color: var(--text-primary);
     letter-spacing: -0.5px;
+    margin: 0;
 }
 
 /* CONTROLLI PLAYER */
@@ -471,8 +480,12 @@ body {
     }
 
     .cover-container {
-        max-width: 100%;
-        margin-bottom: 30px;
+        max-width: 60%;
+        margin-bottom: 20px;
+    }
+
+    .track-artist {
+        font-size: 16px;
     }
 
     .track-title {
@@ -521,6 +534,10 @@ body {
     .start-button {
         padding: 12px 28px;
         font-size: 15px;
+    }
+
+    .track-artist {
+        font-size: 14px;
     }
 
     .track-title {

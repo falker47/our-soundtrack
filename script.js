@@ -84,6 +84,7 @@ const tracks = musicFiles.map((fileName, index) => {
     
     return {
         title: trackTitle,
+        artist: parsed.artist || '', // Nome dell'artista
         songTitle: parsed.title || fileName, // Solo il titolo della canzone
         file: `music/${fileName}`,
         cover: coverPath, // L'immagine verrà verificata quando viene caricata
@@ -106,6 +107,7 @@ const trackList = document.getElementById('trackList');
 const albumCover = document.getElementById('albumCover');
 const canvasVideo = document.getElementById('canvasVideo');
 const trackTitle = document.getElementById('trackTitle');
+const trackArtist = document.getElementById('trackArtist');
 const playPauseBtn = document.getElementById('playPauseBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
@@ -239,8 +241,14 @@ function loadTrack(index) {
         canvasVideo.src = '';
     }
     
-    // Aggiorna titolo
-    trackTitle.textContent = track.title;
+    // Aggiorna artista e titolo
+    if (track.artist) {
+        trackArtist.textContent = track.artist;
+        trackTitle.textContent = track.songTitle;
+    } else {
+        trackArtist.textContent = '';
+        trackTitle.textContent = track.songTitle || 'Seleziona una traccia';
+    }
     
     // Aggiorna lista tracce (evidenzia quella attiva)
     updateActiveTrack();
