@@ -38,6 +38,14 @@
 
         <!-- PANNELLO DESTRO - PLAYER -->
         <main class="player-panel">
+            <!-- Schermata di preload -->
+            <div id="preloadScreen" class="preload-screen">
+                <div class="preload-content">
+                    <div class="preload-spinner"></div>
+                    <p class="preload-text">Caricamento in corso...</p>
+                </div>
+            </div>
+            
             <!-- Canvas video come background (opzionale, mostrato solo se presente) -->
             <video id="canvasVideo" class="canvas-video" autoplay loop muted playsinline></video>
             
@@ -55,8 +63,9 @@
             <!-- Controlli player -->
             <div class="player-controls">
                 <div class="control-buttons">
-                    <button id="shuffleBtn" class="control-btn" title="Shuffle">
+                    <button id="shuffleBtn" class="control-btn shuffle-btn" title="Shuffle">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M13.151.922a.5.5 0 0 1 .5 0l1.5 1.5a.5.5 0 0 1 0 .5l-1.5 1.5a.5.5 0 0 1-.5 0l-1.5-1.5a.5.5 0 0 1 0-.5l1.5-1.5ZM13.151 7.922a.5.5 0 0 1 .5 0l1.5 1.5a.5.5 0 0 1 0 .5l-1.5 1.5a.5.5 0 0 1-.5 0l-1.5-1.5a.5.5 0 0 1 0-.5l1.5-1.5ZM13.151 14.922a.5.5 0 0 1 .5 0l1.5 1.5a.5.5 0 0 1 0 .5l-1.5 1.5a.5.5 0 0 1-.5 0l-1.5-1.5a.5.5 0 0 1 0-.5l1.5-1.5Z"/>
                             <path d="M0 3.5A.5.5 0 0 1 .5 4H1c2.202 0 3.827 1.24 4.874 2.418.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 5.24 10.798 4 13 4h1.5a.5.5 0 0 1 0 1H13c-1.798 0-3.173 1.01-4.126 2.082-.49.552-.865 1.102-1.126 1.532-.26-.43-.636-.98-1.126-1.532C5.173 6.01 3.798 5 2 5H.5a.5.5 0 0 1-.5-.5zm0 4A.5.5 0 0 1 .5 8H1c1.798 0 3.173 1.01 4.126 2.082.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 9.01 10.798 8 13 8h1.5a.5.5 0 0 1 0 1H13c-2.202 0-3.827 1.24-4.874 2.418-.49.552-.865 1.102-1.126 1.532-.26-.43-.636-.98-1.126-1.532C5.173 10.24 3.798 9 2 9H.5a.5.5 0 0 1-.5-.5z"/>
                         </svg>
                     </button>

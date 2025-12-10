@@ -112,6 +112,7 @@ const albumCover = document.getElementById('albumCover');
 const canvasVideo = document.getElementById('canvasVideo');
 const trackTitle = document.getElementById('trackTitle');
 const trackArtist = document.getElementById('trackArtist');
+const preloadScreen = document.getElementById('preloadScreen');
 const playPauseBtn = document.getElementById('playPauseBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
@@ -139,9 +140,11 @@ async function init() {
         console.log('Tutte le risorse sono state pre-caricate');
     });
     
-    // Carica il primo brano (senza riprodurlo)
+    // Carica il primo brano (senza riprodurlo e senza mostrare preload)
     if (tracks.length > 0) {
-        await loadTrack(0);
+        // Nascondi preload screen se visibile
+        preloadScreen.classList.remove('active');
+        await loadTrack(0, false); // Passa false per non mostrare il preload al primo caricamento
     }
 }
 
@@ -362,8 +365,13 @@ async function loadCoverImage(musicFilePath) {
 // ============================================
 // CARICAMENTO TRACCE
 // ============================================
-async function loadTrack(index) {
+async function loadTrack(index, showPreload = true) {
     if (index < 0 || index >= tracks.length) return;
+    
+    // Mostra la schermata di preload (se richiesto)
+    if (showPreload) {
+        preloadScreen.classList.add('active');
+    }
     
     currentTrackIndex = index;
     const track = tracks[index];
@@ -384,83 +392,125 @@ async function loadTrack(index) {
     progressFill.style.width = '0%';
     currentTimeEl.textContent = '0:00';
     
-    // Carica audio e immagine in parallelo
-    await Promise.allSettled([
-        (async () => {
-            try {
-                // Se l'audio è in cache, usa quello, altrimenti carica normalmente
-                if (audioCache.has(track.file)) {
-                    const cachedAudio = audioCache.get(track.file);
-                    audioPlayer.src = track.file;
-                    audioPlayer.load();
-                    // La durata dovrebbe essere già disponibile
-                    if (cachedAudio.duration && !isNaN(cachedAudio.duration)) {
-                        totalTimeEl.textContent = formatTime(cachedAudio.duration);
-                    } else {
-                        // Se la durata non è disponibile, aspetta i metadata
-                        await new Promise((resolve) => {
-                            const timeout = setTimeout(() => {
-                                totalTimeEl.textContent = '0:00';
-                                resolve();
-                            }, 3000);
-                            
-                            audioPlayer.addEventListener('loadedmetadata', () => {
-                                clearTimeout(timeout);
-                                totalTimeEl.textContent = formatTime(audioPlayer.duration);
-                                resolve();
-                            }, { once: true });
-                        });
-                    }
+    // Promesse per tracciare il caricamento di tutte le risorse
+    const loadPromises = [];
+    
+    // Carica audio
+    const audioPromise = (async () => {
+        try {
+            // Se l'audio è in cache, usa quello, altrimenti carica normalmente
+            if (audioCache.has(track.file)) {
+                const cachedAudio = audioCache.get(track.file);
+                audioPlayer.src = track.file;
+                audioPlayer.load();
+                // La durata dovrebbe essere già disponibile
+                if (cachedAudio.duration && !isNaN(cachedAudio.duration)) {
+                    totalTimeEl.textContent = formatTime(cachedAudio.duration);
                 } else {
-                    audioPlayer.src = track.file;
-                    audioPlayer.load();
-                    // Attendi che i metadata siano caricati
+                    // Se la durata non è disponibile, aspetta i metadata
                     await new Promise((resolve) => {
                         const timeout = setTimeout(() => {
-                            // Timeout: continua comunque senza bloccare
                             totalTimeEl.textContent = '0:00';
                             resolve();
-                        }, 10000); // Timeout più lungo per connessioni lente
+                        }, 3000);
                         
                         audioPlayer.addEventListener('loadedmetadata', () => {
                             clearTimeout(timeout);
                             totalTimeEl.textContent = formatTime(audioPlayer.duration);
                             resolve();
                         }, { once: true });
-                        
-                        audioPlayer.addEventListener('error', () => {
-                            clearTimeout(timeout);
-                            totalTimeEl.textContent = '0:00';
-                            resolve(); // Continua anche in caso di errore
-                        }, { once: true });
                     });
                 }
-            } catch (error) {
-                console.warn('Errore nel caricamento audio:', error);
-                totalTimeEl.textContent = '0:00';
+            } else {
+                audioPlayer.src = track.file;
+                audioPlayer.load();
+                // Attendi che i metadata siano caricati
+                await new Promise((resolve) => {
+                    const timeout = setTimeout(() => {
+                        // Timeout: continua comunque senza bloccare
+                        totalTimeEl.textContent = '0:00';
+                        resolve();
+                    }, 10000); // Timeout più lungo per connessioni lente
+                    
+                    audioPlayer.addEventListener('loadedmetadata', () => {
+                        clearTimeout(timeout);
+                        totalTimeEl.textContent = formatTime(audioPlayer.duration);
+                        resolve();
+                    }, { once: true });
+                    
+                    audioPlayer.addEventListener('error', () => {
+                        clearTimeout(timeout);
+                        totalTimeEl.textContent = '0:00';
+                        resolve(); // Continua anche in caso di errore
+                    }, { once: true });
+                });
             }
-        })(),
-        loadCoverImage(track.file)
-    ]);
+        } catch (error) {
+            console.warn('Errore nel caricamento audio:', error);
+            totalTimeEl.textContent = '0:00';
+        }
+    })();
+    loadPromises.push(audioPromise);
     
-    // L'immagine è già stata caricata in parallelo con l'audio sopra
+    // Carica immagine
+    const imagePromise = loadCoverImage(track.file);
+    loadPromises.push(imagePromise);
     
-    // Aggiorna canvas video (come background del player-panel)
-    if (track.canvas) {
-        canvasVideo.src = track.canvas;
-        canvasVideo.load();
-        // Verifica se il video può essere caricato
-        canvasVideo.addEventListener('loadeddata', () => {
-            canvasVideo.classList.add('active');
-        }, { once: true });
-        canvasVideo.addEventListener('error', () => {
-            // Se il video non esiste, rimuovi la classe active
+    // Carica video (se presente)
+    const videoPromise = new Promise((resolve) => {
+        if (track.canvas) {
+            canvasVideo.src = track.canvas;
+            canvasVideo.load();
+            
+            let videoLoaded = false;
+            let videoErrored = false;
+            
+            const onLoaded = () => {
+                if (!videoLoaded && !videoErrored) {
+                    videoLoaded = true;
+                    canvasVideo.classList.add('active');
+                    resolve();
+                }
+            };
+            
+            const onError = () => {
+                if (!videoLoaded && !videoErrored) {
+                    videoErrored = true;
+                    canvasVideo.classList.remove('active');
+                    canvasVideo.src = '';
+                    resolve(); // Risolvi comunque per non bloccare
+                }
+            };
+            
+            canvasVideo.addEventListener('loadeddata', onLoaded, { once: true });
+            canvasVideo.addEventListener('canplay', onLoaded, { once: true });
+            canvasVideo.addEventListener('error', onError, { once: true });
+            
+            // Timeout per il video
+            setTimeout(() => {
+                if (!videoLoaded && !videoErrored) {
+                    videoErrored = true;
+                    canvasVideo.classList.remove('active');
+                    canvasVideo.src = '';
+                    resolve();
+                }
+            }, 5000);
+        } else {
             canvasVideo.classList.remove('active');
             canvasVideo.src = '';
-        }, { once: true });
-    } else {
-        canvasVideo.classList.remove('active');
-        canvasVideo.src = '';
+            resolve();
+        }
+    });
+    loadPromises.push(videoPromise);
+    
+    // Attendi che tutte le risorse siano pronte
+    await Promise.allSettled(loadPromises);
+    
+    // Nascondi la schermata di preload (se era visibile)
+    if (showPreload) {
+        setTimeout(() => {
+            preloadScreen.classList.remove('active');
+        }, 300);
     }
 }
 
@@ -556,6 +606,14 @@ async function playRandomTrack() {
 function toggleShuffle() {
     isShuffleActive = !isShuffleActive;
     shuffleBtn.classList.toggle('active', isShuffleActive);
+    
+    // Aggiungi un feedback visivo quando si attiva/disattiva
+    if (isShuffleActive) {
+        shuffleBtn.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+            shuffleBtn.style.transform = '';
+        }, 200);
+    }
 }
 
 function toggleRepeat() {

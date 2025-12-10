@@ -11,8 +11,8 @@
     --bg-card: #1a1a1a;
     --text-primary: #ffffff;
     --text-secondary: #b3b3b3;
-    --text-active: #b91d92;
-    --accent: #b91dae;
+    --text-active: #04bc63;
+    --accent: #03a308a2;
     --hover-bg: #2a2a2a;
     --border-color: #333333;
 }
@@ -94,7 +94,7 @@ body {
     background: var(--accent);
     color: var(--text-primary);
     transform: scale(1.05);
-    box-shadow: 0 8px 24px rgba(185, 29, 174, 0.4);
+    box-shadow: 0 8px 24px rgba(1, 68, 5, 0.4);
 }
 
 .start-button:active {
@@ -250,6 +250,55 @@ body {
     overflow: hidden;
 }
 
+/* SCHERMATA DI PRELOAD */
+.preload-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(18, 18, 18, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.preload-screen.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.preload-content {
+    text-align: center;
+}
+
+.preload-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(1, 125, 20, 0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+.preload-text {
+    color: var(--text-secondary);
+    font-size: 16px;
+    font-weight: 500;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .cover-container {
     position: relative;
     width: 100%;
@@ -350,6 +399,32 @@ body {
 
 .control-btn.active {
     color: var(--accent);
+}
+
+.control-btn.shuffle-btn {
+    transition: all 0.2s ease;
+}
+
+.control-btn.shuffle-btn.active {
+    color: var(--accent);
+    opacity: 1;
+}
+
+.control-btn.shuffle-btn:not(.active) {
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.control-btn.shuffle-btn:hover:not(.active) {
+    color: var(--text-primary);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.control-btn.shuffle-btn:hover.active {
+    color: var(--accent);
+    opacity: 1;
+    transform: scale(1.1);
 }
 
 .control-btn.play-pause {
@@ -499,6 +574,16 @@ body {
     .control-btn.play-pause {
         width: 56px;
         height: 56px;
+    }
+
+    .preload-spinner {
+        width: 40px;
+        height: 40px;
+        border-width: 3px;
+    }
+
+    .preload-text {
+        font-size: 14px;
     }
 }
 
