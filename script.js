@@ -101,6 +101,10 @@ let isShuffleActive = false;
 let isRepeatActive = false;
 let audioContext = null;
 
+// Cache per le risorse pre-caricate
+const imageCache = new Map(); // Cache delle immagini
+const audioCache = new Map(); // Cache degli audio (per metadata)
+
 // Elementi DOM
 const audioPlayer = document.getElementById('audioPlayer');
 const trackList = document.getElementById('trackList');
@@ -123,17 +127,22 @@ const sidebar = document.querySelector('.sidebar');
 // ============================================
 // INIZIALIZZAZIONE
 // ============================================
-function init() {
-    // Carica il primo brano (senza riprodurlo)
-    if (tracks.length > 0) {
-        loadTrack(0);
-    }
-    
+async function init() {
     // Genera la lista delle tracce
     renderTrackList();
     
     // Setup event listeners
     setupEventListeners();
+    
+    // Avvia il preload delle risorse in background
+    preloadAllResources().then(() => {
+        console.log('Tutte le risorse sono state pre-caricate');
+    });
+    
+    // Carica il primo brano (senza riprodurlo)
+    if (tracks.length > 0) {
+        await loadTrack(0);
+    }
 }
 
 // ============================================
@@ -154,8 +163,8 @@ function renderTrackList() {
             <span class="track-title-item">${track.songTitle}</span>
         `;
         
-        li.addEventListener('click', () => {
-            loadTrack(index);
+        li.addEventListener('click', async () => {
+            await loadTrack(index);
             playTrack();
         });
         
@@ -164,9 +173,111 @@ function renderTrackList() {
 }
 
 // ============================================
+// PRELOAD RISORSE
+// ============================================
+function preloadImage(src) {
+    return new Promise((resolve, reject) => {
+        // Controlla se l'immagine è già in cache
+        if (imageCache.has(src)) {
+            resolve(imageCache.get(src));
+            return;
+        }
+        
+        const img = new Image();
+        img.onload = () => {
+            imageCache.set(src, img);
+            resolve(img);
+        };
+        img.onerror = () => {
+            reject(new Error(`Failed to load image: ${src}`));
+        };
+        img.src = src;
+    });
+}
+
+function preloadAudio(src) {
+    return new Promise((resolve, reject) => {
+        // Controlla se l'audio è già in cache
+        if (audioCache.has(src)) {
+            resolve(audioCache.get(src));
+            return;
+        }
+        
+        const audio = new Audio();
+        audio.preload = 'metadata';
+        
+        audio.addEventListener('loadedmetadata', () => {
+            audioCache.set(src, audio);
+            resolve(audio);
+        }, { once: true });
+        
+        audio.addEventListener('error', () => {
+            reject(new Error(`Failed to load audio: ${src}`));
+        }, { once: true });
+        
+        audio.src = src;
+    });
+}
+
+async function preloadImageFromPaths(paths) {
+    // Prova a caricare la prima immagine disponibile dalla lista di percorsi
+    for (const path of paths) {
+        try {
+            await preloadImage(path);
+            return path; // Restituisce il percorso dell'immagine caricata
+        } catch (error) {
+            // Continua con il prossimo percorso
+            continue;
+        }
+    }
+    // Se nessuna immagine è stata trovata, prova il fallback
+    try {
+        await preloadImage('images/cover.jpg');
+        return 'images/cover.jpg';
+    } catch (error) {
+        throw new Error('Nessuna immagine disponibile');
+    }
+}
+
+async function preloadAllResources() {
+    console.log('Inizio preload delle risorse...');
+    const preloadPromises = [];
+    
+    tracks.forEach((track, index) => {
+        // Preload immagini
+        const imageNameWithoutExt = track.file.replace(/^music\//, '').replace(/\.mp3$/i, '');
+        const possibleImagePaths = [
+            `images/cover/${imageNameWithoutExt}.jpg`,
+            `images/cover/${imageNameWithoutExt}.png`,
+            `images/${imageNameWithoutExt}.jpg`,
+            `images/${imageNameWithoutExt}.png`
+        ];
+        
+        // Prova a preloadare la prima immagine disponibile
+        preloadPromises.push(
+            preloadImageFromPaths(possibleImagePaths).catch(() => {
+                // Ignora errori, useremo il fallback quando necessario
+                console.warn(`Impossibile preloadare immagine per traccia ${index + 1}`);
+            })
+        );
+        
+        // Preload audio metadata
+        preloadPromises.push(
+            preloadAudio(track.file).catch(() => {
+                console.warn(`Impossibile preloadare audio per traccia ${index + 1}`);
+            })
+        );
+    });
+    
+    // Attendi che tutte le risorse siano caricate (o fallite)
+    await Promise.allSettled(preloadPromises);
+    console.log('Preload completato');
+}
+
+// ============================================
 // CARICAMENTO IMMAGINI DI COPERTINA
 // ============================================
-function loadCoverImage(musicFilePath) {
+async function loadCoverImage(musicFilePath) {
     // Estrae il nome del file senza estensione
     const imageNameWithoutExt = musicFilePath.replace(/^music\//, '').replace(/\.mp3$/i, '');
     
@@ -175,73 +286,89 @@ function loadCoverImage(musicFilePath) {
         `images/cover/${imageNameWithoutExt}.jpg`,  // Prima prova nella cartella cover
         `images/cover/${imageNameWithoutExt}.png`,
         `images/${imageNameWithoutExt}.jpg`,         // Poi prova direttamente in images
-        `images/${imageNameWithoutExt}.png`,
-        'images/cover.jpg'                           // Infine usa la cover di default
+        `images/${imageNameWithoutExt}.png`
     ];
     
-    // Rimuovi tutti gli handler precedenti
-    albumCover.onerror = null;
-    albumCover.onload = null;
+    // Funzione helper per impostare l'immagine e attendere il caricamento
+    const setImageAndWait = (src) => {
+        return new Promise((resolve) => {
+            // Rimuovi tutti gli handler precedenti
+            albumCover.onload = null;
+            albumCover.onerror = null;
+            
+            // Se l'immagine è già caricata, risolvi immediatamente
+            if (albumCover.src === src && albumCover.complete) {
+                resolve();
+                return;
+            }
+            
+            // Imposta i nuovi handler
+            const onLoad = () => {
+                albumCover.onload = null;
+                albumCover.onerror = null;
+                resolve();
+            };
+            
+            const onError = () => {
+                albumCover.onload = null;
+                albumCover.onerror = null;
+                resolve(); // Continua anche in caso di errore
+            };
+            
+            albumCover.onload = onLoad;
+            albumCover.onerror = onError;
+            
+            // Imposta il src (questo triggera il caricamento)
+            albumCover.src = src;
+            
+            // Se l'immagine è già in cache del browser, potrebbe essere immediata
+            if (albumCover.complete) {
+                onLoad();
+            }
+        });
+    };
     
-    // Funzione ricorsiva per provare a caricare le immagini in sequenza
-    function tryLoadImage(srcList, index) {
-        if (index >= srcList.length) {
-            // Nessuna immagine trovata
-            console.warn('Nessuna immagine di copertina trovata');
+    // Prova a caricare l'immagine dalla cache o dal percorso
+    for (const path of possiblePaths) {
+        if (imageCache.has(path)) {
+            // Usa l'immagine dalla cache
+            await setImageAndWait(path);
             return;
         }
         
-        const img = new Image();
-        img.onload = () => {
-            // Immagine caricata con successo, usa questa
-            albumCover.src = srcList[index];
-        };
-        img.onerror = () => {
-            // Immagine non trovata, prova la prossima
-            tryLoadImage(srcList, index + 1);
-        };
-        img.src = srcList[index];
+        try {
+            await preloadImage(path);
+            await setImageAndWait(path);
+            return;
+        } catch (error) {
+            // Continua con il prossimo percorso
+            continue;
+        }
     }
     
-    // Prova tutti i percorsi in sequenza
-    tryLoadImage(possiblePaths, 0);
+    // Se nessuna immagine è stata trovata, usa il fallback
+    try {
+        const fallbackPath = 'images/cover.jpg';
+        if (!imageCache.has(fallbackPath)) {
+            await preloadImage(fallbackPath);
+        }
+        await setImageAndWait(fallbackPath);
+    } catch (error) {
+        console.warn('Nessuna immagine di copertina disponibile');
+        // Continua comunque senza bloccare
+    }
 }
 
 // ============================================
 // CARICAMENTO TRACCE
 // ============================================
-function loadTrack(index) {
+async function loadTrack(index) {
     if (index < 0 || index >= tracks.length) return;
     
     currentTrackIndex = index;
     const track = tracks[index];
     
-    // Aggiorna audio
-    audioPlayer.src = track.file;
-    audioPlayer.load();
-    
-    // Aggiorna cover (con fallback se l'immagine specifica non esiste)
-    loadCoverImage(track.file);
-    
-    // Aggiorna canvas video (come background del player-panel)
-    if (track.canvas) {
-        canvasVideo.src = track.canvas;
-        canvasVideo.load();
-        // Verifica se il video può essere caricato
-        canvasVideo.addEventListener('loadeddata', () => {
-        canvasVideo.classList.add('active');
-        }, { once: true });
-        canvasVideo.addEventListener('error', () => {
-            // Se il video non esiste, rimuovi la classe active
-            canvasVideo.classList.remove('active');
-            canvasVideo.src = '';
-        }, { once: true });
-    } else {
-        canvasVideo.classList.remove('active');
-        canvasVideo.src = '';
-    }
-    
-    // Aggiorna artista e titolo
+    // Aggiorna artista e titolo immediatamente
     if (track.artist) {
         trackArtist.textContent = track.artist;
         trackTitle.textContent = track.songTitle;
@@ -257,10 +384,84 @@ function loadTrack(index) {
     progressFill.style.width = '0%';
     currentTimeEl.textContent = '0:00';
     
-    // Aggiorna durata totale quando disponibile
-    audioPlayer.addEventListener('loadedmetadata', () => {
-        totalTimeEl.textContent = formatTime(audioPlayer.duration);
-    }, { once: true });
+    // Carica audio e immagine in parallelo
+    await Promise.allSettled([
+        (async () => {
+            try {
+                // Se l'audio è in cache, usa quello, altrimenti carica normalmente
+                if (audioCache.has(track.file)) {
+                    const cachedAudio = audioCache.get(track.file);
+                    audioPlayer.src = track.file;
+                    audioPlayer.load();
+                    // La durata dovrebbe essere già disponibile
+                    if (cachedAudio.duration && !isNaN(cachedAudio.duration)) {
+                        totalTimeEl.textContent = formatTime(cachedAudio.duration);
+                    } else {
+                        // Se la durata non è disponibile, aspetta i metadata
+                        await new Promise((resolve) => {
+                            const timeout = setTimeout(() => {
+                                totalTimeEl.textContent = '0:00';
+                                resolve();
+                            }, 3000);
+                            
+                            audioPlayer.addEventListener('loadedmetadata', () => {
+                                clearTimeout(timeout);
+                                totalTimeEl.textContent = formatTime(audioPlayer.duration);
+                                resolve();
+                            }, { once: true });
+                        });
+                    }
+                } else {
+                    audioPlayer.src = track.file;
+                    audioPlayer.load();
+                    // Attendi che i metadata siano caricati
+                    await new Promise((resolve) => {
+                        const timeout = setTimeout(() => {
+                            // Timeout: continua comunque senza bloccare
+                            totalTimeEl.textContent = '0:00';
+                            resolve();
+                        }, 10000); // Timeout più lungo per connessioni lente
+                        
+                        audioPlayer.addEventListener('loadedmetadata', () => {
+                            clearTimeout(timeout);
+                            totalTimeEl.textContent = formatTime(audioPlayer.duration);
+                            resolve();
+                        }, { once: true });
+                        
+                        audioPlayer.addEventListener('error', () => {
+                            clearTimeout(timeout);
+                            totalTimeEl.textContent = '0:00';
+                            resolve(); // Continua anche in caso di errore
+                        }, { once: true });
+                    });
+                }
+            } catch (error) {
+                console.warn('Errore nel caricamento audio:', error);
+                totalTimeEl.textContent = '0:00';
+            }
+        })(),
+        loadCoverImage(track.file)
+    ]);
+    
+    // L'immagine è già stata caricata in parallelo con l'audio sopra
+    
+    // Aggiorna canvas video (come background del player-panel)
+    if (track.canvas) {
+        canvasVideo.src = track.canvas;
+        canvasVideo.load();
+        // Verifica se il video può essere caricato
+        canvasVideo.addEventListener('loadeddata', () => {
+            canvasVideo.classList.add('active');
+        }, { once: true });
+        canvasVideo.addEventListener('error', () => {
+            // Se il video non esiste, rimuovi la classe active
+            canvasVideo.classList.remove('active');
+            canvasVideo.src = '';
+        }, { once: true });
+    } else {
+        canvasVideo.classList.remove('active');
+        canvasVideo.src = '';
+    }
 }
 
 // ============================================
@@ -313,39 +514,39 @@ function updatePlayPauseButton() {
 // ============================================
 // NAVIGAZIONE TRACCE
 // ============================================
-function playNext() {
+async function playNext() {
     if (isShuffleActive) {
-        playRandomTrack();
+        await playRandomTrack();
     } else {
         const nextIndex = (currentTrackIndex + 1) % tracks.length;
-        loadTrack(nextIndex);
+        await loadTrack(nextIndex);
         playTrack();
     }
 }
 
-function playPrev() {
+async function playPrev() {
     if (audioPlayer.currentTime > 3) {
         // Se siamo oltre i 3 secondi, torna all'inizio
         audioPlayer.currentTime = 0;
     } else {
         // Altrimenti vai alla traccia precedente
         if (isShuffleActive) {
-            playRandomTrack();
+            await playRandomTrack();
         } else {
             const prevIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
-            loadTrack(prevIndex);
+            await loadTrack(prevIndex);
             playTrack();
         }
     }
 }
 
-function playRandomTrack() {
+async function playRandomTrack() {
     let randomIndex;
     do {
         randomIndex = Math.floor(Math.random() * tracks.length);
     } while (randomIndex === currentTrackIndex && tracks.length > 1);
     
-    loadTrack(randomIndex);
+    await loadTrack(randomIndex);
     playTrack();
 }
 
@@ -461,19 +662,70 @@ function setupEventListeners() {
 }
 
 // ============================================
+// SERVICE WORKER REGISTRATION
+// ============================================
+async function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.register('/service-worker.js', {
+                scope: '/'
+            });
+            console.log('[Service Worker] Registrato con successo:', registration.scope);
+            
+            // Controlla lo stato del service worker
+            if (registration.installing) {
+                console.log('[Service Worker] Installazione in corso...');
+            } else if (registration.waiting) {
+                console.log('[Service Worker] In attesa di attivazione...');
+            } else if (registration.active) {
+                console.log('[Service Worker] Attivo e funzionante');
+            }
+            
+            // Controlla se c'è un aggiornamento disponibile
+            registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                console.log('[Service Worker] Trovato aggiornamento');
+                
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        console.log('[Service Worker] Nuova versione disponibile');
+                        // Potresti mostrare un messaggio all'utente per aggiornare
+                    } else if (newWorker.state === 'activated') {
+                        console.log('[Service Worker] Nuova versione attivata');
+                    }
+                });
+            });
+            
+            // Verifica periodicamente gli aggiornamenti
+            setInterval(() => {
+                registration.update();
+            }, 60000); // Controlla ogni minuto
+            
+        } catch (error) {
+            console.error('[Service Worker] Errore durante la registrazione:', error);
+        }
+    } else {
+        console.warn('[Service Worker] Non supportato in questo browser');
+    }
+}
+
+// Registra il service worker all'avvio
+registerServiceWorker();
+
+// ============================================
 // HERO SECTION
 // ============================================
 const heroSection = document.getElementById('heroSection');
 const mainContainer = document.getElementById('mainContainer');
 const startPlayerBtn = document.getElementById('startPlayerBtn');
 
-function showPlayer() {
+async function showPlayer() {
     heroSection.classList.add('hidden');
-    setTimeout(() => {
+    setTimeout(async () => {
         mainContainer.style.display = 'flex';
         // Inizializza il player dopo che la hero è nascosta
         if (!window.playerInitialized) {
-            init();
+            await init();
             window.playerInitialized = true;
         }
     }, 300);
