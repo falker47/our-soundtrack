@@ -64,35 +64,35 @@
             <div class="player-controls">
                 <div class="control-buttons">
                     <button id="shuffleBtn" class="control-btn shuffle-btn" title="Shuffle">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M13.151.922a.5.5 0 0 1 .5 0l1.5 1.5a.5.5 0 0 1 0 .5l-1.5 1.5a.5.5 0 0 1-.5 0l-1.5-1.5a.5.5 0 0 1 0-.5l1.5-1.5ZM13.151 7.922a.5.5 0 0 1 .5 0l1.5 1.5a.5.5 0 0 1 0 .5l-1.5 1.5a.5.5 0 0 1-.5 0l-1.5-1.5a.5.5 0 0 1 0-.5l1.5-1.5ZM13.151 14.922a.5.5 0 0 1 .5 0l1.5 1.5a.5.5 0 0 1 0 .5l-1.5 1.5a.5.5 0 0 1-.5 0l-1.5-1.5a.5.5 0 0 1 0-.5l1.5-1.5Z"/>
-                            <path d="M0 3.5A.5.5 0 0 1 .5 4H1c2.202 0 3.827 1.24 4.874 2.418.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 5.24 10.798 4 13 4h1.5a.5.5 0 0 1 0 1H13c-1.798 0-3.173 1.01-4.126 2.082-.49.552-.865 1.102-1.126 1.532-.26-.43-.636-.98-1.126-1.532C5.173 6.01 3.798 5 2 5H.5a.5.5 0 0 1-.5-.5zm0 4A.5.5 0 0 1 .5 8H1c1.798 0 3.173 1.01 4.126 2.082.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 9.01 10.798 8 13 8h1.5a.5.5 0 0 1 0 1H13c-2.202 0-3.827 1.24-4.874 2.418-.49.552-.865 1.102-1.126 1.532-.26-.43-.636-.98-1.126-1.532C5.173 10.24 3.798 9 2 9H.5a.5.5 0 0 1-.5-.5z"/>
-                        </svg>
+                        <span class="material-icons">shuffle</span>
                     </button>
                     <button id="prevBtn" class="control-btn" title="Precedente">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
-                        </svg>
+                        <span class="material-icons">skip_previous</span>
                     </button>
                     <button id="playPauseBtn" class="control-btn play-pause" title="Play/Pause">
-                        <svg id="playIcon" width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                        <svg id="pauseIcon" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
-                            <path d="M6 4h4v16H6zm8 0h4v16h-4z"/>
-                        </svg>
+                        <span id="playIcon" class="material-icons">play_arrow</span>
+                        <span id="pauseIcon" class="material-icons" style="display: none;">pause</span>
                     </button>
                     <button id="nextBtn" class="control-btn" title="Successiva">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
-                        </svg>
+                        <span class="material-icons">skip_next</span>
                     </button>
                     <button id="repeatBtn" class="control-btn" title="Repeat">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/>
-                        </svg>
+                        <span class="material-icons">repeat</span>
                     </button>
                 </div>
+
+                <div class="progress-container">
+                    <span id="currentTime" class="time">0:00</span>
+                    <div class="progress-bar-wrapper">
+                        <div id="progressBar" class="progress-bar">
+                            <div id="progressFill" class="progress-fill"></div>
+                        </div>
+                    </div>
+                    <span id="totalTime" class="time">0:00</span>
+                </div>
+            </div>
+        </main>
+    </div>
 
                 <!-- Barra di avanzamento -->
                 <div class="progress-container">
