@@ -20,7 +20,6 @@ const musicFiles = [
     "Lady Gaga - Die With A Smile.mp3",
     "Alex Warren - Eternity.mp3",
     "Tom Odell - Grow Old with Me.mp3",
-    "Aerosmith - I Don't Want to Miss a Thing.mp3",
     "Bill Medley & Jennifer Warnes - (I've had) The Time Of My Life.mp3",
     "Bruno Mars - Just the Way you are.mp3",
     "Ed Sheeran - Perfect Symphony (ft. Andrea Bocelli).mp3",
@@ -34,7 +33,6 @@ const musicFiles = [
     "Laura Chiatti - Il mio nuovo sogno.mp3",
     "Luca Laurenti - La mia Evangeline.mp3",
     "Marvin Berry and the Starlighters - Earth Angel.mp3",
-    "Queen - Love of My Life.mp3",
     "Sebastian Yatra - Dos Oruguitas.mp3",
     "Simone Iuè - In ogni parte del mio corazon.mp3",
     "Ultimo - Poesia senza veli.mp3",
@@ -142,9 +140,7 @@ async function init() {
     
     // Carica il primo brano (senza riprodurlo e senza mostrare preload)
     if (tracks.length > 0) {
-        // Nascondi preload screen se visibile
-        preloadScreen.classList.remove('active');
-        await loadTrack(0, false); // Passa false per non mostrare il preload al primo caricamento
+        await loadTrack(0, true); 
     }
 }
 
@@ -167,6 +163,12 @@ function renderTrackList() {
         `;
         
         li.addEventListener('click', async () => {
+            // MODIFICA: Chiudi il menu mobile se aperto
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('open');
+                menuToggle.classList.remove('active');
+            }
+
             await loadTrack(index);
             playTrack();
         });
