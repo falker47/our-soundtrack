@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <meta name="theme-color" content="#b91dae">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <!-- HERO SECTION -->
     <div id="heroSection" class="hero-section">
@@ -16,7 +18,7 @@
             <h1 class="hero-title">Our Soundtrack</h1>
             <button id="startPlayerBtn" class="start-button">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z"/>
+                    <path d="M8 5v14l11-7z" />
                 </svg>
                 <span>Inizia ad ascoltare</span>
             </button>
@@ -45,10 +47,10 @@
                     <p class="preload-text">Caricamento in corso...</p>
                 </div>
             </div>
-            
+
             <!-- Canvas video come background (opzionale, mostrato solo se presente) -->
             <video id="canvasVideo" class="canvas-video" autoplay loop muted playsinline></video>
-            
+
             <!-- Immagine album cover -->
             <div class="cover-container">
                 <img id="albumCover" src="images/cover.jpg" alt="Album Cover" class="album-cover">
@@ -63,21 +65,39 @@
             <!-- Controlli player -->
             <div class="player-controls">
                 <div class="control-buttons">
+
                     <button id="shuffleBtn" class="control-btn shuffle-btn" title="Shuffle">
-                        <span class="material-icons">shuffle</span>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+                        </svg>
                     </button>
+
                     <button id="prevBtn" class="control-btn" title="Precedente">
-                        <span class="material-icons">skip_previous</span>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                        </svg>
                     </button>
+
                     <button id="playPauseBtn" class="control-btn play-pause" title="Play/Pause">
-                        <span id="playIcon" class="material-icons">play_arrow</span>
-                        <span id="pauseIcon" class="material-icons" style="display: none;">pause</span>
+                        <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                        <svg id="pauseIcon" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        </svg>
                     </button>
+
                     <button id="nextBtn" class="control-btn" title="Successiva">
-                        <span class="material-icons">skip_next</span>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                        </svg>
                     </button>
+
                     <button id="repeatBtn" class="control-btn" title="Repeat">
-                        <span class="material-icons">repeat</span>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v6z" />
+                        </svg>
                     </button>
                 </div>
 
@@ -94,18 +114,18 @@
         </main>
     </div>
 
-                <!-- Barra di avanzamento -->
-                <div class="progress-container">
-                    <span id="currentTime" class="time">0:00</span>
-                    <div class="progress-bar-wrapper">
-                        <div id="progressBar" class="progress-bar">
-                            <div id="progressFill" class="progress-fill"></div>
-                        </div>
-                    </div>
-                    <span id="totalTime" class="time">0:00</span>
-                </div>
+    <!-- Barra di avanzamento -->
+    <div class="progress-container">
+        <span id="currentTime" class="time">0:00</span>
+        <div class="progress-bar-wrapper">
+            <div id="progressBar" class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
             </div>
-        </main>
+        </div>
+        <span id="totalTime" class="time">0:00</span>
+    </div>
+    </div>
+    </main>
     </div>
 
     <!-- Audio element (nascosto) -->
@@ -120,5 +140,5 @@
 
     <script src="script.js"></script>
 </body>
-</html>
 
+</html>

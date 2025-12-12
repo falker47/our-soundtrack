@@ -111,6 +111,7 @@ body {
         opacity: 0;
         transform: translateY(30px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -122,6 +123,7 @@ body {
         opacity: 0;
         transform: scale(0.9);
     }
+
     to {
         opacity: 1;
         transform: scale(1);
@@ -140,6 +142,7 @@ body {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -384,21 +387,38 @@ body {
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 8px;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
     border-radius: 50%;
+    opacity: 0.8;
+    width: 40px;
+    height: 40px;
+}
+
+.control-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+}
+
+.control-btn.play-pause svg {
+    width: 32px;
+    height: 32px;
 }
 
 .control-btn:hover {
     color: var(--text-primary);
     transform: scale(1.1);
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .control-btn.active {
     color: var(--accent);
+    opacity: 1;
 }
 
 .control-btn.shuffle-btn {
@@ -428,17 +448,20 @@ body {
 }
 
 .control-btn.play-pause {
-    background-color: var(--text-primary);
+    background: linear-gradient(135deg, var(--text-primary) 0%, #e0e0e0 100%);
     color: var(--bg-dark);
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
     padding: 0;
+    opacity: 1;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .control-btn.play-pause:hover {
-    transform: scale(1.05);
-    background-color: var(--accent);
+    transform: scale(1.1);
+    background: linear-gradient(135deg, var(--accent) 0%, #05d672 100%);
     color: var(--text-primary);
+    box-shadow: 0 6px 20px rgba(3, 163, 8, 0.4);
 }
 
 /* BARRA DI AVANZAMENTO */
@@ -642,4 +665,3 @@ body {
         height: 48px;
     }
 }
-
