@@ -374,13 +374,13 @@ async function loadTrack(index, showPreload = true) {
     const track = tracks[index];
 
     // Gestione Preload con Debounce
-    // Mostra la schermata di preload solo se il caricamento impiega più di 200ms
+    // Mostra la schermata di preload solo se il caricamento impiega più di 100ms
     let preloadTimer = null;
 
     if (showPreload) {
         preloadTimer = setTimeout(() => {
             preloadScreen.classList.add('active');
-        }, 200);
+        }, 100);
     }
 
     // Aggiorna artista e titolo immediatamente
