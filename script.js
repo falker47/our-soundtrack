@@ -373,32 +373,14 @@ async function loadTrack(index, showPreload = true) {
     currentTrackIndex = index;
     const track = tracks[index];
 
-    // Controlla se le risorse sono già in cache
-    const isAudioCached = audioCache.has(track.file);
-    // Per l'immagine è più complesso perché non sappiamo quale estensione è stata caricata
-    // ma possiamo controllare se c'è un'immagine associata a questo file in un modo approssimativo
-    // oppure caricarla e vedere se è veloce.
-    // Un approccio migliore è controllare se abbiamo già caricato questa traccia in precedenza
-    // o se le risorse sono in cache.
+    // Gestione Preload con Debounce
+    // Mostra la schermata di preload solo se il caricamento impiega più di 200ms
+    let preloadTimer = null;
 
-    // Per semplicità, se showPreload è true, controlliamo la cache
-    let shouldShowPreload = showPreload;
-
-    if (showPreload && isAudioCached) {
-        // Se l'audio è in cache, probabilmente anche l'immagine lo è (dato che precarichiamo tutto insieme)
-        // Ma per sicurezza potremmo voler mostrare comunque il preload se non siamo sicuri.
-        // Tuttavia, la richiesta dell'utente è specifica: "se tutte le risorse fossero già pronte il preload non appaia proprio"
-
-        // Verifichiamo se l'immagine è in cache (l'URL esatto potrebbe non essere noto facilmente qui senza ricalcolarlo
-        // ma possiamo assumere che se l'audio è cached, il grosso è fatto).
-
-        // Ottimizzazione: se l'audio è in cache, evitiamo il preload VISIVO, ma facciamo comunque le chiamate load
-        shouldShowPreload = false;
-    }
-
-    // Mostra la schermata di preload (se richiesto e necessario)
-    if (shouldShowPreload) {
-        preloadScreen.classList.add('active');
+    if (showPreload) {
+        preloadTimer = setTimeout(() => {
+            preloadScreen.classList.add('active');
+        }, 200);
     }
 
     // Aggiorna artista e titolo immediatamente
@@ -531,12 +513,13 @@ async function loadTrack(index, showPreload = true) {
     // Attendi che tutte le risorse siano pronte
     await Promise.allSettled(loadPromises);
 
-    // Nascondi la schermata di preload (se era visibile)
-    if (showPreload) {
-        setTimeout(() => {
-            preloadScreen.classList.remove('active');
-        }, 300);
+    // Pulisci il timer del preload (se il caricamento è stato veloce, il preload non apparirà mai)
+    if (preloadTimer) {
+        clearTimeout(preloadTimer);
     }
+
+    // Nascondi la schermata di preload (se era visibile)
+    preloadScreen.classList.remove('active');
 }
 
 // ============================================
