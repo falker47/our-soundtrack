@@ -45,7 +45,7 @@ function parseFileName(fileName) {
     const nameWithoutExt = fileName.replace(/\.mp3$/i, '');
     // Divide per " - " (spazio, trattino, spazio)
     const parts = nameWithoutExt.split(' - ');
-    
+
     if (parts.length >= 2) {
         return {
             artist: parts[0].trim(),
@@ -63,15 +63,15 @@ function parseFileName(fileName) {
 // Genera automaticamente l'array tracks
 const tracks = musicFiles.map((fileName, index) => {
     const parsed = parseFileName(fileName);
-    const trackTitle = parsed.artist && parsed.title 
-        ? `${parsed.artist} - ${parsed.title}` 
+    const trackTitle = parsed.artist && parsed.title
+        ? `${parsed.artist} - ${parsed.title}`
         : parsed.title || fileName;
-    
+
     // Cerca un video corrispondente nella cartella videos
     // Il video dovrebbe avere lo stesso nome del file MP3 ma con estensione .mp4
     const videoFileName = fileName.replace(/\.mp3$/i, '.mp4');
     const videoPath = `videos/${videoFileName}`;
-    
+
     // Cerca un'immagine di copertina corrispondente nella cartella images
     // L'immagine dovrebbe avere lo stesso nome del file MP3 ma con estensione .jpg o .png
     const imageNameWithoutExt = fileName.replace(/\.mp3$/i, '');
@@ -79,7 +79,7 @@ const tracks = musicFiles.map((fileName, index) => {
     const coverPathPng = `images/${imageNameWithoutExt}.png`;
     // Usa .jpg come default, ma verrà verificato se esiste
     const coverPath = coverPathJpg;
-    
+
     return {
         title: trackTitle,
         artist: parsed.artist || '', // Nome dell'artista
@@ -129,18 +129,18 @@ const sidebar = document.querySelector('.sidebar');
 async function init() {
     // Genera la lista delle tracce
     renderTrackList();
-    
+
     // Setup event listeners
     setupEventListeners();
-    
+
     // Avvia il preload delle risorse in background
     preloadAllResources().then(() => {
         console.log('Tutte le risorse sono state pre-caricate');
     });
-    
+
     // Carica il primo brano (senza riprodurlo e senza mostrare preload)
     if (tracks.length > 0) {
-        await loadTrack(0, true); 
+        await loadTrack(0, true);
     }
 }
 
@@ -149,19 +149,19 @@ async function init() {
 // ============================================
 function renderTrackList() {
     trackList.innerHTML = '';
-    
+
     tracks.forEach((track, index) => {
         const li = document.createElement('li');
         li.className = 'track-item';
         if (index === currentTrackIndex) {
             li.classList.add('active');
         }
-        
+
         li.innerHTML = `
             <span class="track-number">${String(index + 1).padStart(2, '0')}</span>
             <span class="track-title-item">${track.songTitle}</span>
         `;
-        
+
         li.addEventListener('click', async () => {
             // MODIFICA: Chiudi il menu mobile se aperto
             if (window.innerWidth <= 768) {
@@ -172,7 +172,7 @@ function renderTrackList() {
             await loadTrack(index);
             playTrack();
         });
-        
+
         trackList.appendChild(li);
     });
 }
@@ -187,7 +187,7 @@ function preloadImage(src) {
             resolve(imageCache.get(src));
             return;
         }
-        
+
         const img = new Image();
         img.onload = () => {
             imageCache.set(src, img);
@@ -207,19 +207,19 @@ function preloadAudio(src) {
             resolve(audioCache.get(src));
             return;
         }
-        
+
         const audio = new Audio();
         audio.preload = 'metadata';
-        
+
         audio.addEventListener('loadedmetadata', () => {
             audioCache.set(src, audio);
             resolve(audio);
         }, { once: true });
-        
+
         audio.addEventListener('error', () => {
             reject(new Error(`Failed to load audio: ${src}`));
         }, { once: true });
-        
+
         audio.src = src;
     });
 }
@@ -247,7 +247,7 @@ async function preloadImageFromPaths(paths) {
 async function preloadAllResources() {
     console.log('Inizio preload delle risorse...');
     const preloadPromises = [];
-    
+
     tracks.forEach((track, index) => {
         // Preload immagini
         const imageNameWithoutExt = track.file.replace(/^music\//, '').replace(/\.mp3$/i, '');
@@ -257,7 +257,7 @@ async function preloadAllResources() {
             `images/${imageNameWithoutExt}.jpg`,
             `images/${imageNameWithoutExt}.png`
         ];
-        
+
         // Prova a preloadare la prima immagine disponibile
         preloadPromises.push(
             preloadImageFromPaths(possibleImagePaths).catch(() => {
@@ -265,7 +265,7 @@ async function preloadAllResources() {
                 console.warn(`Impossibile preloadare immagine per traccia ${index + 1}`);
             })
         );
-        
+
         // Preload audio metadata
         preloadPromises.push(
             preloadAudio(track.file).catch(() => {
@@ -273,7 +273,7 @@ async function preloadAllResources() {
             })
         );
     });
-    
+
     // Attendi che tutte le risorse siano caricate (o fallite)
     await Promise.allSettled(preloadPromises);
     console.log('Preload completato');
@@ -285,7 +285,7 @@ async function preloadAllResources() {
 async function loadCoverImage(musicFilePath) {
     // Estrae il nome del file senza estensione
     const imageNameWithoutExt = musicFilePath.replace(/^music\//, '').replace(/\.mp3$/i, '');
-    
+
     // Lista di possibili percorsi da provare (in ordine di priorità)
     const possiblePaths = [
         `images/cover/${imageNameWithoutExt}.jpg`,  // Prima prova nella cartella cover
@@ -293,46 +293,46 @@ async function loadCoverImage(musicFilePath) {
         `images/${imageNameWithoutExt}.jpg`,         // Poi prova direttamente in images
         `images/${imageNameWithoutExt}.png`
     ];
-    
+
     // Funzione helper per impostare l'immagine e attendere il caricamento
     const setImageAndWait = (src) => {
         return new Promise((resolve) => {
             // Rimuovi tutti gli handler precedenti
             albumCover.onload = null;
             albumCover.onerror = null;
-            
+
             // Se l'immagine è già caricata, risolvi immediatamente
             if (albumCover.src === src && albumCover.complete) {
                 resolve();
                 return;
             }
-            
+
             // Imposta i nuovi handler
             const onLoad = () => {
                 albumCover.onload = null;
                 albumCover.onerror = null;
                 resolve();
             };
-            
+
             const onError = () => {
                 albumCover.onload = null;
                 albumCover.onerror = null;
                 resolve(); // Continua anche in caso di errore
             };
-            
+
             albumCover.onload = onLoad;
             albumCover.onerror = onError;
-            
+
             // Imposta il src (questo triggera il caricamento)
             albumCover.src = src;
-            
+
             // Se l'immagine è già in cache del browser, potrebbe essere immediata
             if (albumCover.complete) {
                 onLoad();
             }
         });
     };
-    
+
     // Prova a caricare l'immagine dalla cache o dal percorso
     for (const path of possiblePaths) {
         if (imageCache.has(path)) {
@@ -340,7 +340,7 @@ async function loadCoverImage(musicFilePath) {
             await setImageAndWait(path);
             return;
         }
-        
+
         try {
             await preloadImage(path);
             await setImageAndWait(path);
@@ -350,7 +350,7 @@ async function loadCoverImage(musicFilePath) {
             continue;
         }
     }
-    
+
     // Se nessuna immagine è stata trovata, usa il fallback
     try {
         const fallbackPath = 'images/cover.jpg';
@@ -369,15 +369,38 @@ async function loadCoverImage(musicFilePath) {
 // ============================================
 async function loadTrack(index, showPreload = true) {
     if (index < 0 || index >= tracks.length) return;
-    
-    // Mostra la schermata di preload (se richiesto)
-    if (showPreload) {
-        preloadScreen.classList.add('active');
-    }
-    
+
     currentTrackIndex = index;
     const track = tracks[index];
-    
+
+    // Controlla se le risorse sono già in cache
+    const isAudioCached = audioCache.has(track.file);
+    // Per l'immagine è più complesso perché non sappiamo quale estensione è stata caricata
+    // ma possiamo controllare se c'è un'immagine associata a questo file in un modo approssimativo
+    // oppure caricarla e vedere se è veloce.
+    // Un approccio migliore è controllare se abbiamo già caricato questa traccia in precedenza
+    // o se le risorse sono in cache.
+
+    // Per semplicità, se showPreload è true, controlliamo la cache
+    let shouldShowPreload = showPreload;
+
+    if (showPreload && isAudioCached) {
+        // Se l'audio è in cache, probabilmente anche l'immagine lo è (dato che precarichiamo tutto insieme)
+        // Ma per sicurezza potremmo voler mostrare comunque il preload se non siamo sicuri.
+        // Tuttavia, la richiesta dell'utente è specifica: "se tutte le risorse fossero già pronte il preload non appaia proprio"
+
+        // Verifichiamo se l'immagine è in cache (l'URL esatto potrebbe non essere noto facilmente qui senza ricalcolarlo
+        // ma possiamo assumere che se l'audio è cached, il grosso è fatto).
+
+        // Ottimizzazione: se l'audio è in cache, evitiamo il preload VISIVO, ma facciamo comunque le chiamate load
+        shouldShowPreload = false;
+    }
+
+    // Mostra la schermata di preload (se richiesto e necessario)
+    if (shouldShowPreload) {
+        preloadScreen.classList.add('active');
+    }
+
     // Aggiorna artista e titolo immediatamente
     if (track.artist) {
         trackArtist.textContent = track.artist;
@@ -386,17 +409,17 @@ async function loadTrack(index, showPreload = true) {
         trackArtist.textContent = '';
         trackTitle.textContent = track.songTitle || 'Seleziona una traccia';
     }
-    
+
     // Aggiorna lista tracce (evidenzia quella attiva)
     updateActiveTrack();
-    
+
     // Reset progress bar
     progressFill.style.width = '0%';
     currentTimeEl.textContent = '0:00';
-    
+
     // Promesse per tracciare il caricamento di tutte le risorse
     const loadPromises = [];
-    
+
     // Carica audio
     const audioPromise = (async () => {
         try {
@@ -415,7 +438,7 @@ async function loadTrack(index, showPreload = true) {
                             totalTimeEl.textContent = '0:00';
                             resolve();
                         }, 3000);
-                        
+
                         audioPlayer.addEventListener('loadedmetadata', () => {
                             clearTimeout(timeout);
                             totalTimeEl.textContent = formatTime(audioPlayer.duration);
@@ -433,13 +456,13 @@ async function loadTrack(index, showPreload = true) {
                         totalTimeEl.textContent = '0:00';
                         resolve();
                     }, 10000); // Timeout più lungo per connessioni lente
-                    
+
                     audioPlayer.addEventListener('loadedmetadata', () => {
                         clearTimeout(timeout);
                         totalTimeEl.textContent = formatTime(audioPlayer.duration);
                         resolve();
                     }, { once: true });
-                    
+
                     audioPlayer.addEventListener('error', () => {
                         clearTimeout(timeout);
                         totalTimeEl.textContent = '0:00';
@@ -453,20 +476,20 @@ async function loadTrack(index, showPreload = true) {
         }
     })();
     loadPromises.push(audioPromise);
-    
+
     // Carica immagine
     const imagePromise = loadCoverImage(track.file);
     loadPromises.push(imagePromise);
-    
+
     // Carica video (se presente)
     const videoPromise = new Promise((resolve) => {
         if (track.canvas) {
             canvasVideo.src = track.canvas;
             canvasVideo.load();
-            
+
             let videoLoaded = false;
             let videoErrored = false;
-            
+
             const onLoaded = () => {
                 if (!videoLoaded && !videoErrored) {
                     videoLoaded = true;
@@ -474,7 +497,7 @@ async function loadTrack(index, showPreload = true) {
                     resolve();
                 }
             };
-            
+
             const onError = () => {
                 if (!videoLoaded && !videoErrored) {
                     videoErrored = true;
@@ -483,11 +506,11 @@ async function loadTrack(index, showPreload = true) {
                     resolve(); // Risolvi comunque per non bloccare
                 }
             };
-            
+
             canvasVideo.addEventListener('loadeddata', onLoaded, { once: true });
             canvasVideo.addEventListener('canplay', onLoaded, { once: true });
             canvasVideo.addEventListener('error', onError, { once: true });
-            
+
             // Timeout per il video
             setTimeout(() => {
                 if (!videoLoaded && !videoErrored) {
@@ -504,10 +527,10 @@ async function loadTrack(index, showPreload = true) {
         }
     });
     loadPromises.push(videoPromise);
-    
+
     // Attendi che tutte le risorse siano pronte
     await Promise.allSettled(loadPromises);
-    
+
     // Nascondi la schermata di preload (se era visibile)
     if (showPreload) {
         setTimeout(() => {
@@ -553,7 +576,7 @@ function togglePlayPause() {
 function updatePlayPauseButton() {
     const playIcon = document.getElementById('playIcon');
     const pauseIcon = document.getElementById('pauseIcon');
-    
+
     if (isPlaying) {
         playIcon.style.display = 'none';
         pauseIcon.style.display = 'block';
@@ -597,7 +620,7 @@ async function playRandomTrack() {
     do {
         randomIndex = Math.floor(Math.random() * tracks.length);
     } while (randomIndex === currentTrackIndex && tracks.length > 1);
-    
+
     await loadTrack(randomIndex);
     playTrack();
 }
@@ -608,7 +631,7 @@ async function playRandomTrack() {
 function toggleShuffle() {
     isShuffleActive = !isShuffleActive;
     shuffleBtn.classList.toggle('active', isShuffleActive);
-    
+
     // Aggiungi un feedback visivo quando si attiva/disattiva
     if (isShuffleActive) {
         shuffleBtn.style.transform = 'scale(1.2)';
@@ -639,7 +662,7 @@ function seekTo(event) {
     const rect = progressBarWrapper.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const percentage = x / rect.width;
-    
+
     if (audioPlayer.duration) {
         audioPlayer.currentTime = percentage * audioPlayer.duration;
     }
@@ -650,7 +673,7 @@ function seekTo(event) {
 // ============================================
 function formatTime(seconds) {
     if (isNaN(seconds)) return '0:00';
-    
+
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -673,22 +696,22 @@ function updateActiveTrack() {
 function setupEventListeners() {
     // Play/Pause
     playPauseBtn.addEventListener('click', togglePlayPause);
-    
+
     // Navigazione
     nextBtn.addEventListener('click', playNext);
     prevBtn.addEventListener('click', playPrev);
-    
+
     // Shuffle e Repeat
     shuffleBtn.addEventListener('click', toggleShuffle);
     repeatBtn.addEventListener('click', toggleRepeat);
-    
+
     // Barra di avanzamento
     const progressBarWrapper = document.querySelector('.progress-bar-wrapper');
     progressBarWrapper.addEventListener('click', seekTo);
-    
+
     // Aggiornamento progresso
     audioPlayer.addEventListener('timeupdate', updateProgress);
-    
+
     // Fine traccia
     audioPlayer.addEventListener('ended', () => {
         if (isRepeatActive) {
@@ -703,13 +726,13 @@ function setupEventListeners() {
             playNext();
         }
     });
-    
+
     // Menu mobile
     menuToggle.addEventListener('click', () => {
         sidebar.classList.toggle('open');
         menuToggle.classList.toggle('active');
     });
-    
+
     // Chiudi menu quando si clicca fuori (mobile)
     document.addEventListener('click', (e) => {
         if (window.innerWidth <= 768) {
@@ -731,7 +754,7 @@ async function registerServiceWorker() {
                 scope: '/'
             });
             console.log('[Service Worker] Registrato con successo:', registration.scope);
-            
+
             // Controlla lo stato del service worker
             if (registration.installing) {
                 console.log('[Service Worker] Installazione in corso...');
@@ -740,12 +763,12 @@ async function registerServiceWorker() {
             } else if (registration.active) {
                 console.log('[Service Worker] Attivo e funzionante');
             }
-            
+
             // Controlla se c'è un aggiornamento disponibile
             registration.addEventListener('updatefound', () => {
                 const newWorker = registration.installing;
                 console.log('[Service Worker] Trovato aggiornamento');
-                
+
                 newWorker.addEventListener('statechange', () => {
                     if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                         console.log('[Service Worker] Nuova versione disponibile');
@@ -755,12 +778,12 @@ async function registerServiceWorker() {
                     }
                 });
             });
-            
+
             // Verifica periodicamente gli aggiornamenti
             setInterval(() => {
                 registration.update();
             }, 60000); // Controlla ogni minuto
-            
+
         } catch (error) {
             console.error('[Service Worker] Errore durante la registrazione:', error);
         }
