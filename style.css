@@ -32,7 +32,8 @@ body {
     left: 0;
     width: 100%;
     height: 100vh;
-    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-card) 100%);
+    background: #000000;
+    /* Fondo nero fisso */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -48,8 +49,16 @@ body {
 
 .hero-content {
     text-align: center;
-    padding: 40px;
-    max-width: 600px;
+    padding: 60px;
+    max-width: 650px;
+    /* Glassmorphism Container Green */
+    background: linear-gradient(-45deg, #021a05, #0a4f20, #033013, #000000);
+    /* Updated to a green gradient */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 1px solid rgba(4, 188, 99, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     animation: fadeInUp 0.8s ease;
 }
 
@@ -61,7 +70,9 @@ body {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     margin-bottom: 40px;
     object-fit: cover;
+    /* Floating Animation */
     animation: fadeInScale 1s ease;
+    /* Rimossa animazione float */
 }
 
 .hero-title {
@@ -87,7 +98,21 @@ body {
     gap: 12px;
     margin: 0 auto;
     transition: all 0.3s ease;
-    animation: fadeInUp 1s ease 0.4s both;
+    animation: fadeInUp 1s ease 0.4s both, pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(4, 188, 99, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(4, 188, 99, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(4, 188, 99, 0);
+    }
 }
 
 .start-button:hover {
@@ -150,14 +175,17 @@ body {
 
 /* SIDEBAR SINISTRA */
 .sidebar {
-    width: 350px; /* Larghezza fissa per desktop */
+    width: 350px;
+    /* Larghezza fissa per desktop */
     max-width: 30%;
-    background-color: rgba(24, 24, 24, 0.7); /* Background semi-trasparente */
+    background-color: rgba(24, 24, 24, 0.7);
+    /* Background semi-trasparente */
     display: flex;
     flex-direction: column;
     border-right: 1px solid rgba(255, 255, 255, 0.1);
     overflow: hidden;
-    backdrop-filter: blur(20px); /* Effetto Glassmorphism */
+    backdrop-filter: blur(20px);
+    /* Effetto Glassmorphism */
     -webkit-backdrop-filter: blur(20px);
     box-shadow: 5px 0 30px rgba(0, 0, 0, 0.2);
     z-index: 10;
@@ -200,7 +228,8 @@ body {
 
 .track-list {
     list-style: none;
-    padding: 0 12px; /* Margine laterale per la lista */
+    padding: 0 12px;
+    /* Margine laterale per la lista */
 }
 
 .track-item {
@@ -210,7 +239,8 @@ body {
     display: flex;
     align-items: center;
     gap: 16px;
-    border-radius: 12px; /* Arrotondamento bordi */
+    border-radius: 12px;
+    /* Arrotondamento bordi */
     margin-bottom: 4px;
     position: relative;
     overflow: hidden;
@@ -218,8 +248,10 @@ body {
 }
 
 .track-item:hover {
-    background-color: rgba(255, 255, 255, 0.08); /* Effetto hover più sottile */
-    transform: translateX(4px); /* Leggero spostamento a destra */
+    background-color: rgba(255, 255, 255, 0.08);
+    /* Effetto hover più sottile */
+    transform: translateX(4px);
+    /* Leggero spostamento a destra */
 }
 
 .track-item.active {
@@ -245,7 +277,8 @@ body {
 
 .track-number {
     font-size: 14px;
-    font-family: 'Outfit', monospace; /* Monospace per allineamento numeri */
+    font-family: 'Outfit', monospace;
+    /* Monospace per allineamento numeri */
     color: var(--text-secondary);
     min-width: 24px;
     text-align: right;
@@ -601,11 +634,14 @@ body {
         position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
+        width: 66.66%;
+        /* 2/3 of screen width */
         height: 100%;
         z-index: 999;
         transform: translateX(-100%);
         transition: transform 0.3s ease;
+        box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5);
+        /* Added shadow for better separation */
     }
 
     .sidebar.open {
