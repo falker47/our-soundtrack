@@ -636,6 +636,8 @@ body {
         left: 0;
         width: 66.66%;
         /* 2/3 of screen width */
+        max-width: none;
+        /* Override global max-width constraint */
         height: 100%;
         z-index: 999;
         transform: translateX(-100%);
