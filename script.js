@@ -17,9 +17,9 @@
 
 // Lista dei file MP3 nella cartella music
 const musicFiles = [
-    "Lady Gaga - Die With A Smile.mp3",
-    "Alex Warren - Eternity.mp3",
-    "Tom Odell - Grow Old with Me.mp3",
+    "Mauri e Rita - Die With A Smile (cover).mp3",
+    "Mauri - Eternity (cover).mp3",
+    "Mauri - Grow Old with Me (cover).mp3",
     "Bill Medley & Jennifer Warnes - (I've had) The Time Of My Life.mp3",
     "Bruno Mars - Just the Way you are.mp3",
     "Ed Sheeran - Perfect Symphony (ft. Andrea Bocelli).mp3",
