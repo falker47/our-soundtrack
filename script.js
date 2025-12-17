@@ -615,6 +615,12 @@ function toggleShuffle() {
     isShuffleActive = !isShuffleActive;
     shuffleBtn.classList.toggle('active', isShuffleActive);
 
+    // Se attiviamo shuffle, disattiviamo repeat
+    if (isShuffleActive && isRepeatActive) {
+        isRepeatActive = false;
+        repeatBtn.classList.remove('active');
+    }
+
     // Aggiungi un feedback visivo quando si attiva/disattiva
     if (isShuffleActive) {
         shuffleBtn.style.transform = 'scale(1.2)';
@@ -627,6 +633,12 @@ function toggleShuffle() {
 function toggleRepeat() {
     isRepeatActive = !isRepeatActive;
     repeatBtn.classList.toggle('active', isRepeatActive);
+
+    // Se attiviamo repeat, disattiviamo shuffle
+    if (isRepeatActive && isShuffleActive) {
+        isShuffleActive = false;
+        shuffleBtn.classList.remove('active');
+    }
 }
 
 // ============================================
