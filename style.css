@@ -18,7 +18,7 @@
 }
 
 body {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-primary);
     overflow: hidden;
@@ -150,12 +150,17 @@ body {
 
 /* SIDEBAR SINISTRA */
 .sidebar {
-    width: 30%;
-    background-color: var(--bg-sidebar);
+    width: 350px; /* Larghezza fissa per desktop */
+    max-width: 30%;
+    background-color: rgba(24, 24, 24, 0.7); /* Background semi-trasparente */
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--border-color);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
     overflow: hidden;
+    backdrop-filter: blur(20px); /* Effetto Glassmorphism */
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 5px 0 30px rgba(0, 0, 0, 0.2);
+    z-index: 10;
 }
 
 .sidebar-header {
@@ -195,49 +200,84 @@ body {
 
 .track-list {
     list-style: none;
+    padding: 0 12px; /* Margine laterale per la lista */
 }
 
 .track-item {
-    padding: 12px 20px;
+    padding: 14px 16px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     display: flex;
     align-items: center;
-    gap: 12px;
-    border-left: 3px solid transparent;
+    gap: 16px;
+    border-radius: 12px; /* Arrotondamento bordi */
+    margin-bottom: 4px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid transparent;
 }
 
 .track-item:hover {
-    background-color: var(--hover-bg);
+    background-color: rgba(255, 255, 255, 0.08); /* Effetto hover più sottile */
+    transform: translateX(4px); /* Leggero spostamento a destra */
 }
 
 .track-item.active {
-    background-color: var(--hover-bg);
-    border-left-color: var(--accent);
+    background: linear-gradient(90deg, rgba(4, 188, 99, 0.15) 0%, rgba(4, 188, 99, 0.05) 100%);
+    border: 1px solid rgba(4, 188, 99, 0.3);
     color: var(--text-primary);
+    box-shadow: 0 4px 12px rgba(4, 188, 99, 0.1);
+}
+
+/* Indicatore attivo personalizzato */
+.track-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 60%;
+    background-color: var(--text-active);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 10px var(--text-active);
 }
 
 .track-number {
     font-size: 14px;
+    font-family: 'Outfit', monospace; /* Monospace per allineamento numeri */
     color: var(--text-secondary);
     min-width: 24px;
     text-align: right;
+    opacity: 0.7;
+    font-weight: 500;
+}
+
+.track-item:hover .track-number {
+    opacity: 1;
+    color: var(--text-primary);
 }
 
 .track-item.active .track-number {
-    color: var(--accent);
-    font-weight: 600;
+    color: var(--text-active);
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(4, 188, 99, 0.4);
 }
 
 .track-title-item {
     font-size: 15px;
-    color: var(--text-primary);
+    color: rgba(255, 255, 255, 0.8);
     flex: 1;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .track-item.active .track-title-item {
     color: var(--text-primary);
-    font-weight: 500;
+    font-weight: 600;
 }
 
 /* PANNELLO PLAYER */
