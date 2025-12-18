@@ -559,6 +559,8 @@ body {
     border-radius: 2px;
     cursor: pointer;
     position: relative;
+    touch-action: none;
+    /* Prevents scrolling while dragging */
 }
 
 .progress-bar {
@@ -579,6 +581,36 @@ body {
     background-color: var(--accent);
     height: 6px;
     margin-top: -1px;
+}
+
+.seek-tooltip {
+    position: absolute;
+    top: 20px;
+    /* Position below the bar */
+    left: 0;
+    transform: translateX(-50%);
+    /* Center horizontally */
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    width: max-content;
+    /* Prevent stretching */
+    opacity: 0;
+    /* Hidden by default */
+    pointer-events: none;
+    /* Ignore mouse events */
+    transition: opacity 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-color);
+    z-index: 10;
+}
+
+.seek-tooltip.visible {
+    opacity: 1;
 }
 
 /* HAMBURGER MENU (MOBILE) */

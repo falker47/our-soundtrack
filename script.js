@@ -98,6 +98,7 @@ let isPlaying = false;
 let isShuffleActive = false;
 let isRepeatActive = false;
 let audioContext = null;
+let isDragging = false; // Stato per il trascinamento della barra
 
 // Cache per le risorse pre-caricate
 const imageCache = new Map(); // Cache delle immagini
@@ -122,6 +123,7 @@ const currentTimeEl = document.getElementById('currentTime');
 const totalTimeEl = document.getElementById('totalTime');
 const menuToggle = document.getElementById('menuToggle');
 const sidebar = document.querySelector('.sidebar');
+const seekTooltip = document.getElementById('seekTooltip');
 
 // ============================================
 // INIZIALIZZAZIONE
@@ -645,18 +647,71 @@ function toggleRepeat() {
 // BARRA DI AVANZAMENTO
 // ============================================
 function updateProgress() {
-    if (audioPlayer.duration) {
+    // Aggiorna solo se NON stiamo trascinando
+    if (audioPlayer.duration && !isDragging) {
         const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100;
         progressFill.style.width = progress + '%';
         currentTimeEl.textContent = formatTime(audioPlayer.currentTime);
     }
 }
 
-function seekTo(event) {
-    const progressBarWrapper = event.currentTarget;
+
+
+// Funzione unificata per calcolare la percentuale e aggiornare UI
+function updateProgressBarVisuals(event) {
+    const progressBarWrapper = document.querySelector('.progress-bar-wrapper'); // Usa il selettore corretto o la variabile globale se definita
     const rect = progressBarWrapper.getBoundingClientRect();
-    const x = event.clientX - rect.left;
+    let x = event.clientX - rect.left;
+
+    // Clamp values between 0 and width
+    if (x < 0) x = 0;
+    if (x > rect.width) x = rect.width;
+
     const percentage = x / rect.width;
+
+    // Aggiorna visivamente la progress bar
+    progressFill.style.width = (percentage * 100) + '%';
+
+    // Calcola tempo stimato e aggiorna UI principale e Tooltip
+    if (audioPlayer.duration) {
+        const estimatedTime = percentage * audioPlayer.duration;
+        const formattedTime = formatTime(estimatedTime);
+
+        // Aggiorna tempo principale solo se non stiamo trascinando (per evitare flicker se fosse usato altrove, ma qui è isDragging)
+        // In realtà durante il drag vogliamo vedere il tempo cambiare anche nel timer principale? 
+        // La richiesta dice "Add drag-to-seek preview timestamp", ma spesso si aggiorna anche il principale.
+        // Per ora aggiorniamo il tooltip e il principale.
+        currentTimeEl.textContent = formattedTime;
+
+        // Aggiorna Tooltip
+        seekTooltip.textContent = formattedTime;
+        seekTooltip.style.left = (percentage * 100) + '%';
+        seekTooltip.classList.add('visible');
+    }
+
+    return percentage;
+}
+
+function startDrag(event) {
+    isDragging = true;
+    const progressBarWrapper = event.currentTarget;
+    progressBarWrapper.setPointerCapture(event.pointerId); // Cattura il puntatore
+    updateProgressBarVisuals(event);
+}
+
+function doDrag(event) {
+    if (!isDragging) return;
+    updateProgressBarVisuals(event);
+}
+
+function endDrag(event) {
+    if (!isDragging) return;
+    isDragging = false;
+
+    const percentage = updateProgressBarVisuals(event);
+
+    // Nascondi tooltip
+    seekTooltip.classList.remove('visible');
 
     if (audioPlayer.duration) {
         audioPlayer.currentTime = percentage * audioPlayer.duration;
@@ -700,9 +755,15 @@ function setupEventListeners() {
     shuffleBtn.addEventListener('click', toggleShuffle);
     repeatBtn.addEventListener('click', toggleRepeat);
 
-    // Barra di avanzamento
+    // Barra di avanzamento (Pointer Events per Drag-to-Seek)
     const progressBarWrapper = document.querySelector('.progress-bar-wrapper');
-    progressBarWrapper.addEventListener('click', seekTo);
+    progressBarWrapper.addEventListener('pointerdown', startDrag);
+    progressBarWrapper.addEventListener('pointermove', doDrag);
+    progressBarWrapper.addEventListener('pointerup', endDrag);
+    progressBarWrapper.addEventListener('pointercancel', endDrag); // Gestisce interruzioni
+
+    // Rimuovi il vecchio click listener se presente (o lascialo se non confligge, ma pointerdown copre il click)
+    // progressBarWrapper.addEventListener('click', seekTo);
 
     // Aggiornamento progresso
     audioPlayer.addEventListener('timeupdate', updateProgress);
