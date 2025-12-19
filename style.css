@@ -803,6 +803,14 @@ body {
   .preload-text {
     font-size: 14px;
   }
+  .player-panel {
+    padding-bottom: 120px; /* Space for browser footer */
+    overflow-y: auto;
+  }
+
+  .lyrics-content.expanded {
+    padding-bottom: 80px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -860,7 +868,4 @@ body {
     height: 48px;
   }
 
-  .lyrics-content.expanded {
-    max-height: 170px !important;
-  }
 }
