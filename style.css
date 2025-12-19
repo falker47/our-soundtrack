@@ -859,4 +859,8 @@ body {
     width: 48px;
     height: 48px;
   }
+
+  .lyrics-content.expanded {
+    max-height: 200px;
+  }
 }
