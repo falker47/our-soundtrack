@@ -1,139 +1,158 @@
 <!DOCTYPE html>
 <html lang="it">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Our Soundtrack</title>
-    <link rel="icon" type="image/png" href="images/favicon.png">
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#b91dae">
+    <link rel="icon" type="image/png" href="images/favicon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#b91dae" />
 
     <!-- Google Fonts: Outfit -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-    <link rel="stylesheet" href="style.css">
-</head>
+    <link rel="stylesheet" href="style.css" />
+  </head>
 
-<body>
+  <body>
     <!-- HERO SECTION -->
     <div id="heroSection" class="hero-section">
-        <div class="hero-content">
-            <img src="images/Album cover front.jpg" alt="Album Cover" class="hero-cover">
+      <div class="hero-content">
+        <img
+          src="images/Album cover front.jpg"
+          alt="Album Cover"
+          class="hero-cover"
+        />
 
-            <button id="startPlayerBtn" class="start-button">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z" />
-                </svg>
-                <span>Inizia ad ascoltare</span>
+        <button id="startPlayerBtn" class="start-button">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+          <span>Inizia ad ascoltare</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="container" id="mainContainer" style="display: none">
+      <!-- SIDEBAR SINISTRA - PLAYLIST -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h1 class="logo">Our Soundtrack</h1>
+        </div>
+        <div class="playlist">
+          <ul class="track-list" id="trackList">
+            <!-- Le tracce verranno generate dinamicamente da JavaScript -->
+          </ul>
+        </div>
+      </aside>
+
+      <!-- PANNELLO DESTRO - PLAYER -->
+      <main class="player-panel">
+        <!-- Schermata di preload -->
+        <div id="preloadScreen" class="preload-screen">
+          <div class="preload-content">
+            <div class="preload-spinner"></div>
+            <p class="preload-text">Caricamento in corso...</p>
+          </div>
+        </div>
+
+        <!-- Canvas video come background (opzionale, mostrato solo se presente) -->
+        <video
+          id="canvasVideo"
+          class="canvas-video"
+          autoplay
+          loop
+          muted
+          playsinline
+        ></video>
+
+        <!-- Immagine album cover -->
+        <div class="cover-container">
+          <img
+            id="albumCover"
+            src="images/cover.jpg"
+            alt="Album Cover"
+            class="album-cover"
+          />
+        </div>
+
+        <!-- Titolo canzone -->
+        <div class="track-info">
+          <div id="trackArtist" class="track-artist">Seleziona una traccia</div>
+          <h2 id="trackTitle" class="track-title"></h2>
+        </div>
+
+        <!-- Controlli player -->
+        <div class="player-controls">
+          <div class="control-buttons">
+            <button
+              id="shuffleBtn"
+              class="control-btn shuffle-btn"
+              title="Shuffle"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"
+                />
+              </svg>
             </button>
-        </div>
-    </div>
 
-    <div class="container" id="mainContainer" style="display: none;">
-        <!-- SIDEBAR SINISTRA - PLAYLIST -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h1 class="logo">Our Soundtrack</h1>
-            </div>
-            <div class="playlist">
-                <ul class="track-list" id="trackList">
-                    <!-- Le tracce verranno generate dinamicamente da JavaScript -->
-                </ul>
-            </div>
-        </aside>
+            <button id="prevBtn" class="control-btn" title="Precedente">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+              </svg>
+            </button>
 
-        <!-- PANNELLO DESTRO - PLAYER -->
-        <main class="player-panel">
-            <!-- Schermata di preload -->
-            <div id="preloadScreen" class="preload-screen">
-                <div class="preload-content">
-                    <div class="preload-spinner"></div>
-                    <p class="preload-text">Caricamento in corso...</p>
-                </div>
-            </div>
+            <button
+              id="playPauseBtn"
+              class="control-btn play-pause"
+              title="Play/Pause"
+            >
+              <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              <svg
+                id="pauseIcon"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                style="display: none"
+              >
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+              </svg>
+            </button>
 
-            <!-- Canvas video come background (opzionale, mostrato solo se presente) -->
-            <video id="canvasVideo" class="canvas-video" autoplay loop muted playsinline></video>
+            <button id="nextBtn" class="control-btn" title="Successiva">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+              </svg>
+            </button>
 
-            <!-- Immagine album cover -->
-            <div class="cover-container">
-                <img id="albumCover" src="images/cover.jpg" alt="Album Cover" class="album-cover">
-            </div>
+            <button id="repeatBtn" class="control-btn" title="Repeat">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v6z"
+                />
+              </svg>
+            </button>
+          </div>
 
-            <!-- Titolo canzone -->
-            <div class="track-info">
-                <div id="trackArtist" class="track-artist">Seleziona una traccia</div>
-                <h2 id="trackTitle" class="track-title"></h2>
-            </div>
-
-            <!-- Controlli player -->
-            <div class="player-controls">
-                <div class="control-buttons">
-
-                    <button id="shuffleBtn" class="control-btn shuffle-btn" title="Shuffle">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path
-                                d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
-                        </svg>
-                    </button>
-
-                    <button id="prevBtn" class="control-btn" title="Precedente">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
-                        </svg>
-                    </button>
-
-                    <button id="playPauseBtn" class="control-btn play-pause" title="Play/Pause">
-                        <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M8 5v14l11-7z" />
-                        </svg>
-                        <svg id="pauseIcon" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
-                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                        </svg>
-                    </button>
-
-                    <button id="nextBtn" class="control-btn" title="Successiva">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
-                        </svg>
-                    </button>
-
-                    <button id="repeatBtn" class="control-btn" title="Repeat">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v6z" />
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="progress-container">
-                    <span id="currentTime" class="time">0:00</span>
-                    <div class="progress-bar-wrapper">
-                        <div id="progressBar" class="progress-bar">
-                            <div id="progressFill" class="progress-fill"></div>
-                        </div>
-                    </div>
-                    <span id="totalTime" class="time">0:00</span>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Barra di avanzamento -->
-    <div class="progress-container">
-        <span id="currentTime" class="time">0:00</span>
-        <div class="progress-bar-wrapper">
-            <div id="progressBar" class="progress-bar">
+          <div class="progress-container">
+            <span id="currentTime" class="time">0:00</span>
+            <div class="progress-bar-wrapper">
+              <div id="progressBar" class="progress-bar">
                 <div id="progressFill" class="progress-fill"></div>
+              </div>
+              <div id="seekTooltip" class="seek-tooltip">0:00</div>
             </div>
-            <div id="seekTooltip" class="seek-tooltip">0:00</div>
+            <span id="totalTime" class="time">0:00</span>
+          </div>
         </div>
-        <span id="totalTime" class="time">0:00</span>
-    </div>
-    </div>
-    </main>
+      </main>
     </div>
 
     <!-- Audio element (nascosto) -->
@@ -141,12 +160,11 @@
 
     <!-- Hamburger menu per mobile -->
     <button id="menuToggle" class="menu-toggle" aria-label="Toggle menu">
-        <span></span>
-        <span></span>
-        <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
     </button>
 
     <script src="script.js"></script>
-</body>
-
+  </body>
 </html>
