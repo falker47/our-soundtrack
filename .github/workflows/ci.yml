@@ -21,8 +21,14 @@ jobs:
       - name: Syntax checks
         run: |
           node --check soundtrack-catalog.js
+          node --check player-core.js
+          node --check offline-client.js
           node --check script.js
+          node --check service-worker-core.js
           node --check service-worker.js
 
-      - name: Validate catalog assets and scoped PWA paths
+      - name: Behavior tests
+        run: node --test tests/*.test.mjs
+
+      - name: Validate catalog, architecture and scoped PWA paths
         run: node scripts/validate-catalog.mjs
