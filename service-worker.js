@@ -5,7 +5,7 @@ if (!serviceWorkerCore) {
   throw new Error("Soundtrack Service Worker core non disponibile.");
 }
 
-const { parseRangeHeader, summarizeOfflineMatches } = serviceWorkerCore;
+const { rangeResponse, summarizeOfflineMatches } = serviceWorkerCore;
 
 const APP_CACHE_NAME = "our-soundtrack-app-v7";
 const MEDIA_CACHE_NAME = "our-soundtrack-media-v1";
@@ -68,37 +68,6 @@ self.addEventListener("activate", (event) => {
     ])
   );
 });
-
-async function rangeResponse(request, cachedResponse) {
-  const rangeHeader = request.headers.get("range");
-  if (!rangeHeader) return cachedResponse;
-
-  const body = await cachedResponse.arrayBuffer();
-  const parsedRange = parseRangeHeader(rangeHeader, body.byteLength);
-
-  if (!parsedRange) return cachedResponse;
-
-  if (!parsedRange.valid) {
-    return new Response(null, {
-      status: 416,
-      headers: { "Content-Range": `bytes */${parsedRange.total}` },
-    });
-  }
-
-  const headers = new Headers(cachedResponse.headers);
-  headers.set("Accept-Ranges", "bytes");
-  headers.set(
-    "Content-Range",
-    `bytes ${parsedRange.start}-${parsedRange.end}/${parsedRange.total}`
-  );
-  headers.set("Content-Length", String(parsedRange.length));
-
-  return new Response(body.slice(parsedRange.start, parsedRange.end + 1), {
-    status: 206,
-    statusText: "Partial Content",
-    headers,
-  });
-}
 
 async function handleMediaRequest(request) {
   const cache = await caches.open(MEDIA_CACHE_NAME);
