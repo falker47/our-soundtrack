@@ -28,6 +28,37 @@
     });
   }
 
+  async function rangeResponse(request, cachedResponse) {
+    const rangeHeader = request.headers.get("range");
+    if (!rangeHeader) return cachedResponse;
+
+    const body = await cachedResponse.arrayBuffer();
+    const parsedRange = parseRangeHeader(rangeHeader, body.byteLength);
+
+    if (!parsedRange) return cachedResponse;
+
+    if (!parsedRange.valid) {
+      return new Response(null, {
+        status: 416,
+        headers: { "Content-Range": `bytes */${parsedRange.total}` },
+      });
+    }
+
+    const headers = new Headers(cachedResponse.headers);
+    headers.set("Accept-Ranges", "bytes");
+    headers.set(
+      "Content-Range",
+      `bytes ${parsedRange.start}-${parsedRange.end}/${parsedRange.total}`
+    );
+    headers.set("Content-Length", String(parsedRange.length));
+
+    return new Response(body.slice(parsedRange.start, parsedRange.end + 1), {
+      status: 206,
+      statusText: "Partial Content",
+      headers,
+    });
+  }
+
   function summarizeOfflineMatches(trackMatches) {
     let cachedResources = 0;
     let completeTracks = 0;
@@ -57,6 +88,7 @@
 
   globalThis.SoundtrackServiceWorkerCore = Object.freeze({
     parseRangeHeader,
+    rangeResponse,
     summarizeOfflineMatches,
   });
 })();
