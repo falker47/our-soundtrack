@@ -93,10 +93,32 @@ if (script.includes("preloadAllResources") || script.includes("preloadAudio(")) 
   throw new Error("Player must not preload the whole audio catalog automatically.");
 }
 
-for (const id of ["offlineDownloadBtn", "offlineRemoveBtn", "offlineStatus", "offlineProgress"]) {
+for (const id of [
+  "offlineOpenBtn",
+  "offlineModal",
+  "offlineCloseBtn",
+  "offlineDownloadBtn",
+  "offlineRemoveBtn",
+  "offlineStatus",
+  "offlineProgress",
+]) {
   if (!index.includes(`id="${id}"`)) {
     throw new Error(`Missing offline UI control: ${id}`);
   }
+}
+
+for (const technicalCopy of [
+  "Solo app",
+  "L'app è installabile offline",
+  "Service Worker non disponibile.",
+]) {
+  if (index.includes(technicalCopy) || script.includes(technicalCopy)) {
+    throw new Error(`Technical offline copy leaked into listener-facing UI: ${technicalCopy}`);
+  }
+}
+
+if (!index.includes("Ascolta senza Internet")) {
+  throw new Error("Offline panel must use listener-facing language.");
 }
 
 if (currentSources.includes("images/cover.jpg")) {
