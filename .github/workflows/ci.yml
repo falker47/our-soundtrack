@@ -1,4 +1,4 @@
-name: Catalog and PWA validation
+name: Catalog, behavior and distribution validation
 
 on:
   push:
@@ -12,11 +12,12 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
+          package-manager-cache: false
 
       - name: Syntax checks
         run: |
@@ -32,3 +33,6 @@ jobs:
 
       - name: Validate catalog, architecture and scoped PWA paths
         run: node scripts/validate-catalog.mjs
+
+      - name: Validate media distribution boundary
+        run: node scripts/validate-media-distribution.mjs

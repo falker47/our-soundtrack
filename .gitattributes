@@ -1,0 +1,7 @@
+# Binary media are intentionally versioned as opaque assets.
+# Git LFS is not used because GitHub Pages does not support LFS-backed site files.
+*.mp3 binary
+*.mp4 binary
+*.jpg binary
+*.jpeg binary
+*.png binary

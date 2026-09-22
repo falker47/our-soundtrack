@@ -1,0 +1,8 @@
+# Local/editor noise
+.DS_Store
+Thumbs.db
+
+# Incomplete or temporary media downloads
+*.part
+*.download
+*.tmp
