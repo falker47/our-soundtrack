@@ -114,5 +114,5 @@ Binary assets are marked as binary in `.gitattributes` to avoid meaningless text
 - Web Audio/Media APIs
 - Service Worker + Cache Storage
 - Web App Manifest
-- Node 20 built-in test runner
+- Node 24 built-in test runner
 - GitHub Actions
