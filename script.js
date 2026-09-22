@@ -704,6 +704,8 @@ function setOfflineControlState(mode, progress = 0) {
   }
 
   if (mode === "preparing") {
+    offlineProgressRing.style.strokeDasharray = "24 95.38";
+    offlineProgressRing.style.strokeDashoffset = "0";
     offlinePercent.textContent = "0%";
     offlineDownloadControl.setAttribute(
       "aria-label",
