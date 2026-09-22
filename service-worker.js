@@ -1,6 +1,6 @@
 importScripts("./soundtrack-catalog.js");
 
-const APP_CACHE_NAME = "our-soundtrack-app-v4";
+const APP_CACHE_NAME = "our-soundtrack-app-v5";
 const MEDIA_CACHE_NAME = "our-soundtrack-media-v1";
 
 const APP_SHELL = [
