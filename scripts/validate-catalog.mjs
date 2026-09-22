@@ -123,18 +123,21 @@ for (const id of [
   }
 }
 
-for (const removedUi of [
+for (const removedId of [
   "offlineModal",
   "offlineOpenBtn",
   "offlineDownloadBtn",
   "offlineRemoveBtn",
   "offlineStatus",
   "offlineProgress",
-  "Ascolta senza Internet",
 ]) {
-  if (index.includes(removedUi)) {
-    throw new Error(`Obsolete offline panel UI is still present: ${removedUi}`);
+  if (index.includes(`id="${removedId}"`)) {
+    throw new Error(`Obsolete offline panel UI is still present: ${removedId}`);
   }
+}
+
+if (index.includes("Ascolta senza Internet")) {
+  throw new Error("Obsolete offline explanatory panel copy is still present.");
 }
 
 if (!script.includes('setOfflineControlState("downloading"')) {
