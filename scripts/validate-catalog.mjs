@@ -62,6 +62,23 @@ const styles = fs.readFileSync(path.join(root, "style.css"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 const currentSources = [index, script, styles, serviceWorker].join("\n");
 
+if (!index.startsWith("<!DOCTYPE html>")) {
+  throw new Error("index.html must begin with <!DOCTYPE html> and contain no stray markup before it.");
+}
+
+for (const id of [
+  "offlineDownloadControl",
+  "offlineProgressRing",
+  "offlinePercent",
+  "offlineDownloadGlyph",
+  "offlineCheckGlyph",
+]) {
+  const occurrences = index.split(`id="${id}"`).length - 1;
+  if (occurrences !== 1) {
+    throw new Error(`Expected exactly one ${id}, found ${occurrences}.`);
+  }
+}
+
 const catalogPos = index.indexOf('src="soundtrack-catalog.js"');
 const appPos = index.indexOf('src="script.js"');
 if (catalogPos < 0 || appPos < 0 || catalogPos > appPos) {
