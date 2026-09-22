@@ -220,8 +220,8 @@ body {
   --offline-ring-length: 119.38;
   position: relative;
   flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -253,7 +253,7 @@ body {
 }
 
 .offline-download-control.ready {
-  color: var(--text-active);
+  color: #86a18d;
 }
 
 .offline-download-control.error {
@@ -263,8 +263,8 @@ body {
 .offline-download-svg {
   position: absolute;
   inset: 0;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   overflow: visible;
 }
 
@@ -311,8 +311,13 @@ body {
   animation: offline-ring-spin 0.9s linear infinite;
 }
 
+.offline-download-control.ready .offline-progress-track {
+  stroke: rgba(134, 161, 141, 0.14);
+}
+
 .offline-download-control.ready .offline-progress-ring {
   stroke-dashoffset: 0;
+  opacity: 0.72;
 }
 
 @keyframes offline-ring-spin {
@@ -323,6 +328,13 @@ body {
 
 .offline-glyph {
   fill: currentColor;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.offline-download-control.ready #offlineCheckGlyph {
+  transform: scale(0.76);
+  opacity: 0.82;
 }
 
 .offline-download-control.downloading .offline-glyph,
@@ -339,7 +351,7 @@ body {
   position: relative;
   z-index: 2;
   color: var(--text-primary);
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.2px;
@@ -854,7 +866,8 @@ body {
   display: none;
   position: fixed;
   top: 20px;
-  right: 20px;
+  left: 20px;
+  right: auto;
   z-index: 1000;
   background: var(--bg-sidebar);
   border: 1px solid var(--border-color);
@@ -894,18 +907,29 @@ body {
     flex-direction: column;
   }
 
+  .sidebar-header {
+    padding-left: 60px;
+    padding-right: 12px;
+  }
+
+  .sidebar-title-row {
+    gap: 8px;
+  }
+
   .sidebar-title-row .logo {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .offline-download-control,
   .offline-download-svg {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
   }
 
   .menu-toggle {
     display: flex;
+    left: 12px;
+    right: auto;
   }
 
   .sidebar {
