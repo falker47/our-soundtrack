@@ -1,4 +1,4 @@
-name: Catalog and PWA validation
+name: Catalog, behavior and distribution validation
 
 on:
   push:
@@ -32,3 +32,6 @@ jobs:
 
       - name: Validate catalog, architecture and scoped PWA paths
         run: node scripts/validate-catalog.mjs
+
+      - name: Validate media distribution boundary
+        run: node scripts/validate-media-distribution.mjs
