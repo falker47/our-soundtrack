@@ -1,0 +1,28 @@
+name: Catalog and PWA validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Syntax checks
+        run: |
+          node --check soundtrack-catalog.js
+          node --check script.js
+          node --check service-worker.js
+
+      - name: Validate catalog assets and scoped PWA paths
+        run: node scripts/validate-catalog.mjs
