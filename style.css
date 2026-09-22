@@ -311,13 +311,19 @@ body {
   animation: offline-ring-spin 0.9s linear infinite;
 }
 
+.offline-download-control.ready .offline-progress-track,
+.offline-download-control.ready .offline-progress-ring {
+  transform: rotate(-90deg) scale(0.68);
+  transform-origin: 22px 22px;
+}
+
 .offline-download-control.ready .offline-progress-track {
-  stroke: rgba(134, 161, 141, 0.14);
+  stroke: rgba(134, 161, 141, 0.12);
 }
 
 .offline-download-control.ready .offline-progress-ring {
   stroke-dashoffset: 0;
-  opacity: 0.72;
+  opacity: 0.68;
 }
 
 @keyframes offline-ring-spin {
@@ -328,13 +334,10 @@ body {
 
 .offline-glyph {
   fill: currentColor;
-  transform-box: fill-box;
-  transform-origin: center;
 }
 
-.offline-download-control.ready #offlineCheckGlyph {
-  transform: scale(0.76);
-  opacity: 0.82;
+.offline-check-glyph {
+  opacity: 0.86;
 }
 
 .offline-download-control.downloading .offline-glyph,
