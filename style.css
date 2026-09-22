@@ -243,6 +243,10 @@ body {
   transform: scale(0.94);
 }
 
+.offline-download-control:disabled {
+  cursor: wait;
+}
+
 .offline-download-control:focus-visible {
   outline: 2px solid var(--text-active);
   outline-offset: 2px;
