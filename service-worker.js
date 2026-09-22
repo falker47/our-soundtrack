@@ -1,6 +1,13 @@
-importScripts("./soundtrack-catalog.js");
+importScripts("./soundtrack-catalog.js", "./service-worker-core.js");
 
-const APP_CACHE_NAME = "our-soundtrack-app-v6";
+const serviceWorkerCore = globalThis.SoundtrackServiceWorkerCore;
+if (!serviceWorkerCore) {
+  throw new Error("Soundtrack Service Worker core non disponibile.");
+}
+
+const { rangeResponse, summarizeOfflineMatches } = serviceWorkerCore;
+
+const APP_CACHE_NAME = "our-soundtrack-app-v7";
 const MEDIA_CACHE_NAME = "our-soundtrack-media-v1";
 
 const APP_SHELL = [
@@ -8,7 +15,10 @@ const APP_SHELL = [
   "index.html",
   "style.css",
   "script.js",
+  "player-core.js",
+  "offline-client.js",
   "soundtrack-catalog.js",
+  "service-worker-core.js",
   "manifest.json",
   "images/Album cover front.jpg",
   "images/Album cover retro.jpg",
@@ -58,43 +68,6 @@ self.addEventListener("activate", (event) => {
     ])
   );
 });
-
-async function rangeResponse(request, cachedResponse) {
-  const rangeHeader = request.headers.get("range");
-  if (!rangeHeader) return cachedResponse;
-
-  const match = /^bytes=(\d+)-(\d*)$/.exec(rangeHeader);
-  if (!match) return cachedResponse;
-
-  const body = await cachedResponse.arrayBuffer();
-  const start = Number(match[1]);
-  const requestedEnd = match[2] ? Number(match[2]) : body.byteLength - 1;
-  const end = Math.min(requestedEnd, body.byteLength - 1);
-
-  if (
-    !Number.isFinite(start) ||
-    !Number.isFinite(end) ||
-    start < 0 ||
-    start > end ||
-    start >= body.byteLength
-  ) {
-    return new Response(null, {
-      status: 416,
-      headers: { "Content-Range": `bytes */${body.byteLength}` },
-    });
-  }
-
-  const headers = new Headers(cachedResponse.headers);
-  headers.set("Accept-Ranges", "bytes");
-  headers.set("Content-Range", `bytes ${start}-${end}/${body.byteLength}`);
-  headers.set("Content-Length", String(end - start + 1));
-
-  return new Response(body.slice(start, end + 1), {
-    status: 206,
-    statusText: "Partial Content",
-    headers,
-  });
-}
 
 async function handleMediaRequest(request) {
   const cache = await caches.open(MEDIA_CACHE_NAME);
@@ -181,23 +154,14 @@ self.addEventListener("fetch", (event) => {
 
 async function getOfflineStatus() {
   const cache = await caches.open(MEDIA_CACHE_NAME);
-  let cachedResources = 0;
-  let completeTracks = 0;
+  const trackMatches = [];
 
   for (const track of MEDIA_BY_TRACK) {
     const matches = await Promise.all(track.urls.map((url) => cache.match(url)));
-    const trackCached = matches.every(Boolean);
-    cachedResources += matches.filter(Boolean).length;
-    if (trackCached) completeTracks += 1;
+    trackMatches.push(matches.map(Boolean));
   }
 
-  return {
-    completeTracks,
-    totalTracks: MEDIA_BY_TRACK.length,
-    cachedResources,
-    totalResources: MEDIA_URLS.length,
-    complete: completeTracks === MEDIA_BY_TRACK.length,
-  };
+  return summarizeOfflineMatches(trackMatches);
 }
 
 function postToClient(client, payload) {
