@@ -23,12 +23,34 @@ test("byte-range parsing supports bounded and open-ended ranges", () => {
   });
 });
 
-test("out-of-bounds byte ranges are reported as invalid", () => {
-  assert.deepEqual(core.parseRangeHeader("bytes=100-", 100), {
-    valid: false,
-    total: 100,
+test("cached media range requests return 206 with the requested bytes", async () => {
+  const bytes = Uint8Array.from({ length: 100 }, (_, index) => index);
+  const cached = new Response(bytes, {
+    status: 200,
+    headers: { "Content-Type": "audio/mpeg" },
+  });
+  const request = new Request("https://example.test/song.mp3", {
+    headers: { Range: "bytes=10-19" },
   });
 
+  const response = await core.rangeResponse(request, cached);
+
+  assert.equal(response.status, 206);
+  assert.equal(response.headers.get("Content-Range"), "bytes 10-19/100");
+  assert.equal(response.headers.get("Content-Length"), "10");
+  assert.equal((await response.arrayBuffer()).byteLength, 10);
+});
+
+test("out-of-bounds cached media ranges return 416", async () => {
+  const cached = new Response(new Uint8Array(100), { status: 200 });
+  const request = new Request("https://example.test/song.mp3", {
+    headers: { Range: "bytes=100-" },
+  });
+
+  const response = await core.rangeResponse(request, cached);
+
+  assert.equal(response.status, 416);
+  assert.equal(response.headers.get("Content-Range"), "bytes */100");
   assert.equal(core.parseRangeHeader("not-a-range", 100), null);
 });
 
