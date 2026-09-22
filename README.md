@@ -67,9 +67,10 @@ node --check service-worker-core.js
 node --check service-worker.js
 node --test tests/*.test.mjs
 node scripts/validate-catalog.mjs
+node scripts/validate-media-distribution.mjs
 ```
 
-CI verifies the canonical media quartets, the three personal covers, playback decision logic, offline UI state derivation, stale-load invalidation, byte-range behavior, cache-status summaries and GitHub Pages scope-relative paths.
+CI verifies the canonical media quartets, the three personal covers, playback decision logic, offline UI state derivation, stale-load invalidation, byte-range behavior, cache-status summaries, GitHub Pages scope-relative paths, and the bounded same-origin media distribution policy.
 
 ## Media layout
 
@@ -83,6 +84,28 @@ lyrics/<track>.txt
 ```
 
 Asset paths are declared by `soundtrack-catalog.js`; the player and Service Worker do not maintain separate playlists.
+
+
+## Media distribution policy
+
+The media library intentionally remains **co-located with the static app and served from the same GitHub Pages origin**.
+
+That is a deliberate reliability choice rather than an unfinished migration:
+
+- the current canonical media footprint is about 123 MiB, comfortably below GitHub Pages' current 1 GB published-site limit and the recommended 1 GB source-repository limit;
+- Git LFS is not used because GitHub Pages does not support LFS-backed site files;
+- keeping media same-origin preserves the already validated Service Worker cache path and offline byte-range seeking without adding an external CDN/storage dependency;
+- splitting media to another host would introduce CORS/range/availability assumptions without solving a current capacity problem.
+
+Repository/CI guardrails keep that decision bounded:
+
+- only the 80 assets referenced by the 20-track canonical catalog may live in `music/`, `images/cover/`, `videos/` and `lyrics/`;
+- orphaned or missing catalog media fail CI;
+- Git LFS pointer files fail CI;
+- no individual canonical media file may exceed 95 MiB;
+- the total canonical media budget is capped at 200 MiB, so meaningful growth forces an explicit distribution decision instead of silently bloating the site.
+
+Binary assets are marked as binary in `.gitattributes` to avoid meaningless text diffs.
 
 ## Technologies
 
