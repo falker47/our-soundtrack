@@ -160,8 +160,12 @@ if (!styles.includes("left: 20px;") || !styles.includes("right: auto;")) {
   throw new Error("Mobile hamburger must be anchored on the left.");
 }
 
-if (!styles.includes(".offline-download-control.ready #offlineCheckGlyph") || !styles.includes("transform: scale(0.76)")) {
-  throw new Error("Completed-download tick must remain visually reduced.");
+if (!styles.includes(".offline-download-control.ready .offline-progress-ring") || !styles.includes("scale(0.68)")) {
+  throw new Error("Completed-download badge ring must remain compact.");
+}
+
+if (!index.includes('class="offline-check-glyph hidden"') || !index.includes('stroke-linecap="round"')) {
+  throw new Error("Completed-download state must use the classic stroked checkmark.");
 }
 
 if (!styles.includes("color: #86a18d;")) {
