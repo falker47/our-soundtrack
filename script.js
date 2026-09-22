@@ -1,52 +1,33 @@
 // ============================================
-// CONFIGURAZIONE TRACCE
+// CATALOGO E CORE DEL PLAYER
 // ============================================
-// La playlist e i relativi asset sono definiti in soundtrack-catalog.js.
-// Audio, cover, video e lyrics usano percorsi espliciti: nessuna derivazione
-// da vecchie versioni della playlist e nessun preload globale implicito.
+// Il catalogo canonico vive in soundtrack-catalog.js.
+// Le decisioni di playback pure vivono in player-core.js; questo file orchestra
+// soltanto media element, DOM e caricamento delle risorse della traccia corrente.
 
-// Catalogo canonico condiviso con il Service Worker.
 const catalogAssets = globalThis.SOUNDTRACK_CATALOG;
+const playerCore = globalThis.SoundtrackPlayerCore;
+
 if (!Array.isArray(catalogAssets) || catalogAssets.length === 0) {
   throw new Error("Soundtrack catalog non disponibile.");
 }
 
-// Funzione per parsare il nome del file e estrarre artista e titolo
-function parseFileName(fileName) {
-  const nameWithoutExt = fileName.replace(/\.mp3$/i, "");
-  const parts = nameWithoutExt.split(" - ");
-
-  if (parts.length >= 2) {
-    return {
-      artist: parts[0].trim(),
-      title: parts.slice(1).join(" - ").trim(),
-    };
-  }
-
-  return {
-    artist: "",
-    title: nameWithoutExt.trim(),
-  };
+if (!playerCore) {
+  throw new Error("Soundtrack player core non disponibile.");
 }
 
-// Genera l'array player dalla stessa fonte di verità usata dal PWA.
-const tracks = catalogAssets.map((asset) => {
-  const parsed = parseFileName(asset.file);
-  const trackTitle =
-    parsed.artist && parsed.title
-      ? `${parsed.artist} - ${parsed.title}`
-      : parsed.title || asset.file;
+const {
+  createTracks,
+  resolveNextIndex,
+  resolvePreviousAction,
+  toggleExclusiveMode,
+  resolveEndedAction,
+  formatTime,
+  createLoadGuard,
+} = playerCore;
 
-  return {
-    title: trackTitle,
-    artist: parsed.artist || "",
-    songTitle: parsed.title || asset.file,
-    file: asset.audio,
-    cover: asset.cover,
-    canvas: asset.video,
-    lyrics: asset.lyrics,
-  };
-});
+const tracks = createTracks(catalogAssets);
+const loadGuard = createLoadGuard();
 
 // ============================================
 // VARIABILI GLOBALI
@@ -84,11 +65,6 @@ const seekTooltip = document.getElementById("seekTooltip");
 const lyricsText = document.getElementById("lyricsText");
 const lyricsToggle = document.getElementById("lyricsToggle");
 const lyricsContent = document.getElementById("lyricsContent");
-const offlineDownloadControl = document.getElementById("offlineDownloadControl");
-const offlineProgressRing = document.getElementById("offlineProgressRing");
-const offlinePercent = document.getElementById("offlinePercent");
-const offlineDownloadGlyph = document.getElementById("offlineDownloadGlyph");
-const offlineCheckGlyph = document.getElementById("offlineCheckGlyph");
 
 // ============================================
 // INIZIALIZZAZIONE
@@ -169,11 +145,16 @@ function preloadImage(src) {
 // ============================================
 // CARICAMENTO IMMAGINI DI COPERTINA
 // ============================================
-async function loadCoverImage(coverPath) {
+async function loadCoverImage(coverPath, loadToken) {
   const fallbackPath = "images/Album cover front.jpg";
 
   const setImageAndWait = (src) =>
     new Promise((resolve) => {
+      if (!loadGuard.isCurrent(loadToken)) {
+        resolve();
+        return;
+      }
+
       albumCover.onload = () => resolve();
       albumCover.onerror = () => resolve();
       albumCover.src = src;
@@ -184,16 +165,21 @@ async function loadCoverImage(coverPath) {
     if (!imageCache.has(coverPath)) {
       await preloadImage(coverPath);
     }
+    if (!loadGuard.isCurrent(loadToken)) return;
     await setImageAndWait(coverPath);
-  } catch (error) {
+  } catch {
+    if (!loadGuard.isCurrent(loadToken)) return;
     console.warn("Cover non disponibile, uso fallback:", coverPath);
     try {
       if (!imageCache.has(fallbackPath)) {
         await preloadImage(fallbackPath);
       }
+      if (!loadGuard.isCurrent(loadToken)) return;
       await setImageAndWait(fallbackPath);
     } catch {
-      console.warn("Fallback cover non disponibile");
+      if (loadGuard.isCurrent(loadToken)) {
+        console.warn("Fallback cover non disponibile");
+      }
     }
   }
 }
@@ -204,20 +190,20 @@ async function loadCoverImage(coverPath) {
 async function loadTrack(index, showPreload = true) {
   if (index < 0 || index >= tracks.length) return;
 
+  const loadToken = loadGuard.next();
   currentTrackIndex = index;
   const track = tracks[index];
 
-  // Gestione Preload con Debounce
-  // Mostra la schermata di preload solo se il caricamento impiega più di 100ms
   let preloadTimer = null;
 
   if (showPreload) {
     preloadTimer = setTimeout(() => {
-      preloadScreen.classList.add("active");
+      if (loadGuard.isCurrent(loadToken)) {
+        preloadScreen.classList.add("active");
+      }
     }, 100);
   }
 
-  // Aggiorna artista e titolo immediatamente
   if (track.artist) {
     trackArtist.textContent = track.artist;
     trackTitle.textContent = track.songTitle;
@@ -226,20 +212,14 @@ async function loadTrack(index, showPreload = true) {
     trackTitle.textContent = track.songTitle || "Seleziona una traccia";
   }
 
-  // Aggiorna lista tracce (evidenzia quella attiva)
   updateActiveTrack();
+  loadLyrics(track.lyrics, loadToken);
 
-  // Carica i testi della canzone
-  loadLyrics(track.lyrics);
-
-  // Reset progress bar
   progressFill.style.width = "0%";
   currentTimeEl.textContent = "0:00";
 
-  // Promesse per tracciare il caricamento di tutte le risorse
   const loadPromises = [];
 
-  // Carica solo l'audio della traccia selezionata.
   const audioPromise = (async () => {
     try {
       audioPlayer.src = track.file;
@@ -247,7 +227,9 @@ async function loadTrack(index, showPreload = true) {
 
       await new Promise((resolve) => {
         const timeout = setTimeout(() => {
-          totalTimeEl.textContent = "0:00";
+          if (loadGuard.isCurrent(loadToken)) {
+            totalTimeEl.textContent = "0:00";
+          }
           resolve();
         }, 10000);
 
@@ -255,7 +237,9 @@ async function loadTrack(index, showPreload = true) {
           "loadedmetadata",
           () => {
             clearTimeout(timeout);
-            totalTimeEl.textContent = formatTime(audioPlayer.duration);
+            if (loadGuard.isCurrent(loadToken)) {
+              totalTimeEl.textContent = formatTime(audioPlayer.duration);
+            }
             resolve();
           },
           { once: true }
@@ -265,79 +249,74 @@ async function loadTrack(index, showPreload = true) {
           "error",
           () => {
             clearTimeout(timeout);
-            totalTimeEl.textContent = "0:00";
+            if (loadGuard.isCurrent(loadToken)) {
+              totalTimeEl.textContent = "0:00";
+            }
             resolve();
           },
           { once: true }
         );
       });
     } catch (error) {
-      console.warn("Errore nel caricamento audio:", error);
-      totalTimeEl.textContent = "0:00";
+      if (loadGuard.isCurrent(loadToken)) {
+        console.warn("Errore nel caricamento audio:", error);
+        totalTimeEl.textContent = "0:00";
+      }
     }
   })();
   loadPromises.push(audioPromise);
 
-  // Carica immagine
-  const imagePromise = loadCoverImage(track.cover);
-  loadPromises.push(imagePromise);
+  loadPromises.push(loadCoverImage(track.cover, loadToken));
 
-  // Carica video (se presente)
   const videoPromise = new Promise((resolve) => {
-    if (track.canvas) {
-      canvasVideo.src = track.canvas;
-      canvasVideo.load();
-
-      let videoLoaded = false;
-      let videoErrored = false;
-
-      const onLoaded = () => {
-        if (!videoLoaded && !videoErrored) {
-          videoLoaded = true;
-          canvasVideo.classList.add("active");
-          resolve();
-        }
-      };
-
-      const onError = () => {
-        if (!videoLoaded && !videoErrored) {
-          videoErrored = true;
-          canvasVideo.classList.remove("active");
-          canvasVideo.src = "";
-          resolve(); // Risolvi comunque per non bloccare
-        }
-      };
-
-      canvasVideo.addEventListener("loadeddata", onLoaded, { once: true });
-      canvasVideo.addEventListener("canplay", onLoaded, { once: true });
-      canvasVideo.addEventListener("error", onError, { once: true });
-
-      // Timeout per il video
-      setTimeout(() => {
-        if (!videoLoaded && !videoErrored) {
-          videoErrored = true;
-          canvasVideo.classList.remove("active");
-          canvasVideo.src = "";
-          resolve();
-        }
-      }, 5000);
-    } else {
-      canvasVideo.classList.remove("active");
-      canvasVideo.src = "";
+    if (!track.canvas) {
+      if (loadGuard.isCurrent(loadToken)) {
+        canvasVideo.classList.remove("active");
+        canvasVideo.src = "";
+      }
       resolve();
+      return;
     }
+
+    canvasVideo.src = track.canvas;
+    canvasVideo.load();
+
+    let settled = false;
+
+    const finish = (available) => {
+      if (settled) return;
+      settled = true;
+
+      if (loadGuard.isCurrent(loadToken)) {
+        canvasVideo.classList.toggle("active", available);
+        if (!available) {
+          canvasVideo.src = "";
+        }
+      }
+      resolve();
+    };
+
+    canvasVideo.addEventListener("loadeddata", () => finish(true), {
+      once: true,
+    });
+    canvasVideo.addEventListener("canplay", () => finish(true), {
+      once: true,
+    });
+    canvasVideo.addEventListener("error", () => finish(false), {
+      once: true,
+    });
+
+    setTimeout(() => finish(false), 5000);
   });
   loadPromises.push(videoPromise);
 
-  // Attendi che tutte le risorse siano pronte
   await Promise.allSettled(loadPromises);
 
-  // Pulisci il timer del preload (se il caricamento è stato veloce, il preload non apparirà mai)
   if (preloadTimer) {
     clearTimeout(preloadTimer);
   }
 
-  // Nascondi la schermata di preload (se era visibile)
+  if (!loadGuard.isCurrent(loadToken)) return;
   preloadScreen.classList.remove("active");
 }
 
@@ -345,27 +324,13 @@ async function loadTrack(index, showPreload = true) {
 // CONTROLLI RIPRODUZIONE
 // ============================================
 function playTrack() {
-  audioPlayer
-    .play()
-    .then(() => {
-      isPlaying = true;
-      updatePlayPauseButton();
-      if (canvasVideo.classList.contains("active")) {
-        canvasVideo.play();
-      }
-    })
-    .catch((error) => {
-      console.error("Errore nella riproduzione:", error);
-    });
+  audioPlayer.play().catch((error) => {
+    console.error("Errore nella riproduzione:", error);
+  });
 }
 
 function pauseTrack() {
   audioPlayer.pause();
-  isPlaying = false;
-  updatePlayPauseButton();
-  if (canvasVideo.classList.contains("active")) {
-    canvasVideo.pause();
-  }
 }
 
 function togglePlayPause() {
@@ -393,55 +358,50 @@ function updatePlayPauseButton() {
 // NAVIGAZIONE TRACCE
 // ============================================
 async function playNext() {
-  if (isShuffleActive) {
-    await playRandomTrack();
-  } else {
-    const nextIndex = (currentTrackIndex + 1) % tracks.length;
-    await loadTrack(nextIndex);
-    playTrack();
-  }
+  const nextIndex = resolveNextIndex({
+    currentIndex: currentTrackIndex,
+    totalTracks: tracks.length,
+    shuffle: isShuffleActive,
+  });
+
+  await loadTrack(nextIndex);
+  playTrack();
 }
 
 async function playPrev() {
-  if (audioPlayer.currentTime > 3) {
-    // Se siamo oltre i 3 secondi, torna all'inizio
+  const action = resolvePreviousAction({
+    currentIndex: currentTrackIndex,
+    currentTime: audioPlayer.currentTime,
+    totalTracks: tracks.length,
+    shuffle: isShuffleActive,
+  });
+
+  if (action.type === "restart") {
     audioPlayer.currentTime = 0;
-  } else {
-    // Altrimenti vai alla traccia precedente
-    if (isShuffleActive) {
-      await playRandomTrack();
-    } else {
-      const prevIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
-      await loadTrack(prevIndex);
-      playTrack();
-    }
+    return;
   }
-}
 
-async function playRandomTrack() {
-  let randomIndex;
-  do {
-    randomIndex = Math.floor(Math.random() * tracks.length);
-  } while (randomIndex === currentTrackIndex && tracks.length > 1);
-
-  await loadTrack(randomIndex);
+  await loadTrack(action.index);
   playTrack();
 }
 
 // ============================================
 // SHUFFLE E REPEAT
 // ============================================
-function toggleShuffle() {
-  isShuffleActive = !isShuffleActive;
+function applyPlaybackModeState(state) {
+  isShuffleActive = state.shuffle;
+  isRepeatActive = state.repeat;
   shuffleBtn.classList.toggle("active", isShuffleActive);
+  repeatBtn.classList.toggle("active", isRepeatActive);
+}
 
-  // Se attiviamo shuffle, disattiviamo repeat
-  if (isShuffleActive && isRepeatActive) {
-    isRepeatActive = false;
-    repeatBtn.classList.remove("active");
-  }
+function toggleShuffle() {
+  const nextState = toggleExclusiveMode(
+    { shuffle: isShuffleActive, repeat: isRepeatActive },
+    "shuffle"
+  );
+  applyPlaybackModeState(nextState);
 
-  // Aggiungi un feedback visivo quando si attiva/disattiva
   if (isShuffleActive) {
     shuffleBtn.style.transform = "scale(1.2)";
     setTimeout(() => {
@@ -451,14 +411,12 @@ function toggleShuffle() {
 }
 
 function toggleRepeat() {
-  isRepeatActive = !isRepeatActive;
-  repeatBtn.classList.toggle("active", isRepeatActive);
-
-  // Se attiviamo repeat, disattiviamo shuffle
-  if (isRepeatActive && isShuffleActive) {
-    isShuffleActive = false;
-    shuffleBtn.classList.remove("active");
-  }
+  applyPlaybackModeState(
+    toggleExclusiveMode(
+      { shuffle: isShuffleActive, repeat: isRepeatActive },
+      "repeat"
+    )
+  );
 }
 
 // ============================================
@@ -537,38 +495,30 @@ function endDrag(event) {
 // ============================================
 // UTILITY
 // ============================================
-function formatTime(seconds) {
-  if (isNaN(seconds)) return "0:00";
-
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
 function updateActiveTrack() {
   const trackItems = document.querySelectorAll(".track-item");
   trackItems.forEach((item, index) => {
-    if (index === currentTrackIndex) {
-      item.classList.add("active");
-    } else {
-      item.classList.remove("active");
-    }
+    item.classList.toggle("active", index === currentTrackIndex);
   });
 }
 
 // ============================================
 // LYRICS
 // ============================================
-async function loadLyrics(lyricsPath) {
+async function loadLyrics(lyricsPath, loadToken) {
   try {
     const response = await fetch(lyricsPath);
     if (!response.ok) {
-      throw new Error('Lyrics file not found');
+      throw new Error("Lyrics file not found");
     }
     const lyrics = await response.text();
-    lyricsText.textContent = lyrics.trim() || 'Lyrics not available';
-  } catch (error) {
-    lyricsText.textContent = 'Lyrics not available';
+    if (loadGuard.isCurrent(loadToken)) {
+      lyricsText.textContent = lyrics.trim() || "Lyrics not available";
+    }
+  } catch {
+    if (loadGuard.isCurrent(loadToken)) {
+      lyricsText.textContent = "Lyrics not available";
+    }
   }
 }
 
@@ -581,398 +531,85 @@ function toggleLyrics() {
 // EVENT LISTENERS
 // ============================================
 function setupEventListeners() {
-  // Play/Pause
   playPauseBtn.addEventListener("click", togglePlayPause);
 
-  // Navigazione
   nextBtn.addEventListener("click", playNext);
   prevBtn.addEventListener("click", playPrev);
 
-  // Shuffle e Repeat
   shuffleBtn.addEventListener("click", toggleShuffle);
   repeatBtn.addEventListener("click", toggleRepeat);
 
-  // Lyrics toggle
   lyricsToggle.addEventListener("click", toggleLyrics);
 
-  // Barra di avanzamento (Pointer Events per Drag-to-Seek)
   const progressBarWrapper = document.querySelector(".progress-bar-wrapper");
   progressBarWrapper.addEventListener("pointerdown", startDrag);
   progressBarWrapper.addEventListener("pointermove", doDrag);
   progressBarWrapper.addEventListener("pointerup", endDrag);
-  progressBarWrapper.addEventListener("pointercancel", endDrag); // Gestisce interruzioni
+  progressBarWrapper.addEventListener("pointercancel", endDrag);
 
-  // Rimuovi il vecchio click listener se presente (o lascialo se non confligge, ma pointerdown copre il click)
-  // progressBarWrapper.addEventListener('click', seekTo);
-
-  // Aggiornamento progresso
   audioPlayer.addEventListener("timeupdate", updateProgress);
 
-  // Fine traccia
-  audioPlayer.addEventListener("ended", () => {
-    if (isRepeatActive) {
-      // Riproduci la stessa traccia
-      audioPlayer.currentTime = 0;
-      playTrack();
-    } else if (isShuffleActive) {
-      // Riproduci traccia casuale
-      playRandomTrack();
-    } else {
-      // Passa alla successiva
-      playNext();
+  audioPlayer.addEventListener("play", () => {
+    isPlaying = true;
+    updatePlayPauseButton();
+
+    if (canvasVideo.classList.contains("active")) {
+      canvasVideo.play().catch(() => undefined);
     }
   });
 
-  // Menu mobile
+  audioPlayer.addEventListener("pause", () => {
+    isPlaying = false;
+    updatePlayPauseButton();
+
+    if (canvasVideo.classList.contains("active")) {
+      canvasVideo.pause();
+    }
+  });
+
+  audioPlayer.addEventListener("ended", async () => {
+    const action = resolveEndedAction({
+      currentIndex: currentTrackIndex,
+      totalTracks: tracks.length,
+      shuffle: isShuffleActive,
+      repeat: isRepeatActive,
+    });
+
+    if (action.type === "restart") {
+      audioPlayer.currentTime = 0;
+      playTrack();
+      return;
+    }
+
+    await loadTrack(action.index);
+    playTrack();
+  });
+
   menuToggle.addEventListener("click", () => {
     sidebar.classList.toggle("open");
     menuToggle.classList.toggle("active");
   });
 
-  // Chiudi menu quando si clicca fuori (mobile)
-  document.addEventListener("click", (e) => {
-    if (window.innerWidth <= 768) {
-      if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
-        sidebar.classList.remove("open");
-        menuToggle.classList.remove("active");
-      }
+  document.addEventListener("click", (event) => {
+    if (
+      window.innerWidth <= 768 &&
+      !sidebar.contains(event.target) &&
+      !menuToggle.contains(event.target)
+    ) {
+      sidebar.classList.remove("open");
+      menuToggle.classList.remove("active");
     }
   });
 }
 
 // ============================================
-// SERVICE WORKER REGISTRATION
+// OFFLINE / SERVICE WORKER
 // ============================================
-const OFFLINE_ESTIMATE_BYTES = 150 * 1024 * 1024;
-const OFFLINE_RING_LENGTH = 2 * Math.PI * 19;
-let offlineBusy = false;
-let offlineComplete = false;
-
-function setOfflineProgress(progress) {
-  if (!offlineProgressRing || !offlinePercent) return;
-
-  const normalized = Math.max(0, Math.min(1, progress));
-  const percent = Math.round(normalized * 100);
-
-  offlineProgressRing.style.strokeDasharray = String(OFFLINE_RING_LENGTH);
-  offlineProgressRing.style.strokeDashoffset = String(
-    OFFLINE_RING_LENGTH * (1 - normalized)
-  );
-  offlinePercent.textContent = `${percent}%`;
+if (!globalThis.SoundtrackOffline) {
+  throw new Error("Soundtrack offline client non disponibile.");
 }
 
-function setOfflineControlState(mode, progress = 0) {
-  if (!offlineDownloadControl) return;
-
-  offlineDownloadControl.classList.remove(
-    "idle",
-    "partial",
-    "preparing",
-    "downloading",
-    "ready",
-    "error"
-  );
-  offlineDownloadControl.classList.add(mode);
-
-  offlineDownloadGlyph?.classList.toggle("hidden", mode === "ready");
-  offlineCheckGlyph?.classList.toggle("hidden", mode !== "ready");
-
-  const showPercent =
-    mode === "partial" || mode === "preparing" || mode === "downloading";
-  offlinePercent?.classList.toggle("hidden", !showPercent);
-
-  if (mode === "ready") {
-    setOfflineProgress(1);
-    offlineDownloadControl.setAttribute(
-      "aria-label",
-      "Playlist disponibile offline. Tocca per rimuovere il download."
-    );
-    offlineDownloadControl.title =
-      "Disponibile offline · tocca per rimuovere";
-    return;
-  }
-
-  if (mode === "partial") {
-    setOfflineProgress(progress);
-    offlineDownloadControl.setAttribute(
-      "aria-label",
-      `Download parziale ${Math.round(progress * 100)}%. Tocca per continuare.`
-    );
-    offlineDownloadControl.title =
-      `Download parziale · ${Math.round(progress * 100)}%`;
-    return;
-  }
-
-  if (mode === "preparing") {
-    offlineProgressRing.style.strokeDasharray = "24 95.38";
-    offlineProgressRing.style.strokeDashoffset = "0";
-    offlinePercent.textContent = "0%";
-    offlineDownloadControl.setAttribute(
-      "aria-label",
-      "Preparazione del download offline"
-    );
-    offlineDownloadControl.title = "Preparazione download…";
-    return;
-  }
-
-  if (mode === "downloading") {
-    setOfflineProgress(progress);
-    offlineDownloadControl.setAttribute(
-      "aria-label",
-      `Download in corso ${Math.round(progress * 100)}%`
-    );
-    offlineDownloadControl.title =
-      `Download in corso · ${Math.round(progress * 100)}%`;
-    return;
-  }
-
-  if (mode === "error") {
-    setOfflineProgress(0);
-    offlineDownloadControl.setAttribute(
-      "aria-label",
-      "Download offline non riuscito. Tocca per riprovare."
-    );
-    offlineDownloadControl.title = "Download non riuscito · tocca per riprovare";
-    return;
-  }
-
-  setOfflineProgress(0);
-  offlineDownloadControl.setAttribute(
-    "aria-label",
-    "Scarica la playlist per ascoltarla senza Internet"
-  );
-  offlineDownloadControl.title = "Scarica per ascoltare offline";
-}
-
-function renderOfflineStatus(status) {
-  const {
-    cachedResources = 0,
-    totalResources = tracks.length * 4,
-    complete = false,
-  } = status || {};
-
-  offlineComplete = Boolean(complete);
-
-  if (complete) {
-    setOfflineControlState("ready", 1);
-    return;
-  }
-
-  if (cachedResources > 0 && totalResources > 0) {
-    setOfflineControlState(
-      "partial",
-      Math.min(cachedResources / totalResources, 0.99)
-    );
-    return;
-  }
-
-  setOfflineControlState("idle", 0);
-}
-
-async function getServiceWorkerTarget() {
-  if (!("serviceWorker" in navigator)) return null;
-  const registration = await navigator.serviceWorker.ready;
-  return navigator.serviceWorker.controller || registration.active;
-}
-
-async function sendServiceWorkerMessage(type) {
-  const worker = await getServiceWorkerTarget();
-  if (!worker) throw new Error("Download offline non disponibile.");
-  worker.postMessage({ type });
-}
-
-async function requestOfflineStatus() {
-  try {
-    await sendServiceWorkerMessage("GET_OFFLINE_STATUS");
-  } catch (error) {
-    setOfflineControlState("error");
-    if (offlineDownloadControl) {
-      offlineDownloadControl.disabled = true;
-      offlineDownloadControl.title =
-        "Il download offline non è disponibile in questo browser";
-    }
-  }
-}
-
-async function hasEnoughOfflineStorage() {
-  if (!navigator.storage?.estimate) return true;
-
-  const estimate = await navigator.storage.estimate();
-  if (!Number.isFinite(estimate.quota) || !Number.isFinite(estimate.usage)) {
-    return true;
-  }
-
-  return estimate.quota - estimate.usage >= OFFLINE_ESTIMATE_BYTES;
-}
-
-async function startOfflineDownload() {
-  if (offlineBusy) return;
-
-  try {
-    const enoughStorage = await hasEnoughOfflineStorage();
-    if (!enoughStorage) {
-      setOfflineControlState("error");
-      window.alert(
-        "Spazio insufficiente: servono circa 125 MB liberi, più un piccolo margine per il browser."
-      );
-      return;
-    }
-
-    offlineBusy = true;
-    offlineDownloadControl.disabled = true;
-    setOfflineControlState("preparing", 0);
-
-    if (navigator.storage?.persist) {
-      navigator.storage.persist().catch(() => false);
-    }
-
-    await sendServiceWorkerMessage("CACHE_OFFLINE_LIBRARY");
-  } catch (error) {
-    offlineBusy = false;
-    offlineDownloadControl.disabled = false;
-    setOfflineControlState("error");
-  }
-}
-
-async function removeOfflineDownload() {
-  if (offlineBusy) return;
-
-  const confirmed = window.confirm(
-    "Rimuovere da questo dispositivo la playlist scaricata per l'ascolto offline?"
-  );
-  if (!confirmed) return;
-
-  offlineBusy = true;
-  offlineDownloadControl.disabled = true;
-  setOfflineControlState("preparing", 0);
-
-  try {
-    await sendServiceWorkerMessage("REMOVE_OFFLINE_LIBRARY");
-  } catch (error) {
-    offlineBusy = false;
-    offlineDownloadControl.disabled = false;
-    setOfflineControlState("error");
-  }
-}
-
-function setupOfflineControls() {
-  if (
-    !offlineDownloadControl ||
-    !offlineProgressRing ||
-    !offlinePercent ||
-    !offlineDownloadGlyph ||
-    !offlineCheckGlyph
-  ) {
-    return;
-  }
-
-  setOfflineControlState("idle", 0);
-
-  if (!("serviceWorker" in navigator)) {
-    setOfflineControlState("error");
-    offlineDownloadControl.disabled = true;
-    offlineDownloadControl.title =
-      "Il download offline non è disponibile in questo browser";
-    return;
-  }
-
-  offlineDownloadControl.addEventListener("click", () => {
-    if (offlineBusy) return;
-
-    if (offlineComplete) {
-      removeOfflineDownload();
-    } else {
-      startOfflineDownload();
-    }
-  });
-
-  navigator.serviceWorker.addEventListener("message", (event) => {
-    const data = event.data || {};
-
-    if (data.type === "OFFLINE_STATUS") {
-      renderOfflineStatus(data);
-      return;
-    }
-
-    if (data.type === "OFFLINE_PROGRESS") {
-      offlineBusy = true;
-      const progress =
-        data.totalTracks > 0
-          ? data.completedTracks / data.totalTracks
-          : 0;
-      setOfflineControlState("downloading", progress);
-      return;
-    }
-
-    if (data.type === "OFFLINE_COMPLETE") {
-      offlineBusy = false;
-      offlineDownloadControl.disabled = false;
-
-      if (data.complete) {
-        offlineComplete = true;
-        setOfflineControlState("ready", 1);
-      } else {
-        offlineComplete = false;
-        const progress =
-          data.totalResources > 0
-            ? data.cachedResources / data.totalResources
-            : data.totalTracks > 0
-              ? data.completeTracks / data.totalTracks
-              : 0;
-        setOfflineControlState(
-          data.errors > 0 ? "error" : "partial",
-          progress
-        );
-      }
-      return;
-    }
-
-    if (data.type === "OFFLINE_REMOVED") {
-      offlineBusy = false;
-      offlineComplete = false;
-      offlineDownloadControl.disabled = false;
-      setOfflineControlState("idle", 0);
-    }
-  });
-
-  requestOfflineStatus();
-}
-
-async function registerServiceWorker() {
-  if (!("serviceWorker" in navigator)) {
-    console.warn("[Service Worker] Non supportato in questo browser");
-    return null;
-  }
-
-  try {
-    const registration = await navigator.serviceWorker.register(
-      "./service-worker.js",
-      { scope: "./" }
-    );
-
-    registration.addEventListener("updatefound", () => {
-      const newWorker = registration.installing;
-      if (!newWorker) return;
-
-      newWorker.addEventListener("statechange", () => {
-        if (
-          newWorker.state === "installed" &&
-          navigator.serviceWorker.controller
-        ) {
-          console.log("[Service Worker] Nuova versione disponibile");
-        }
-      });
-    });
-
-    setInterval(() => registration.update(), 60000);
-    return registration;
-  } catch (error) {
-    console.error("[Service Worker] Errore durante la registrazione:", error);
-    return null;
-  }
-}
-
-registerServiceWorker().finally(setupOfflineControls);
+globalThis.SoundtrackOffline.init();
 
 // ============================================
 // HERO SECTION
