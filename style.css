@@ -204,6 +204,89 @@ body {
   letter-spacing: -0.5px;
 }
 
+.offline-panel {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.offline-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.offline-badge {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.offline-badge.ready {
+  color: var(--text-active);
+}
+
+.offline-badge.error {
+  color: #ff7b7b;
+}
+
+.offline-status {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.offline-progress {
+  width: 100%;
+  height: 5px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.offline-progress-fill {
+  width: 0%;
+  height: 100%;
+  background: var(--text-active);
+  transition: width 0.2s ease;
+}
+
+.offline-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--text-active);
+  color: #06130b;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.offline-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.offline-btn:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.offline-btn.secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
 .playlist {
   flex: 1;
   overflow-y: auto;

@@ -43,6 +43,24 @@
       <aside class="sidebar">
         <div class="sidebar-header">
           <h1 class="logo">Our Soundtrack</h1>
+          <div class="offline-panel" id="offlinePanel">
+            <div class="offline-heading">
+              <span>Offline</span>
+              <span id="offlineBadge" class="offline-badge">Verifica...</span>
+            </div>
+            <p id="offlineStatus" class="offline-status">
+              Controllo disponibilità offline...
+            </p>
+            <div id="offlineProgress" class="offline-progress hidden" aria-hidden="true">
+              <div id="offlineProgressFill" class="offline-progress-fill"></div>
+            </div>
+            <button id="offlineDownloadBtn" class="offline-btn" type="button">
+              Scarica playlist (~125 MB)
+            </button>
+            <button id="offlineRemoveBtn" class="offline-btn secondary hidden" type="button">
+              Rimuovi download offline
+            </button>
+          </div>
         </div>
         <div class="playlist">
           <ul class="track-list" id="trackList">
@@ -75,7 +93,7 @@
         <div class="cover-container">
           <img
             id="albumCover"
-            src="images/cover.jpg"
+            src="images/Album cover front.jpg"
             alt="Album Cover"
             class="album-cover"
           />
