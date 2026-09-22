@@ -76,21 +76,19 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        event.waitUntil(
-          fetch(event.request)
-            .then((networkResponse) => {
-              if (
-                networkResponse &&
-                networkResponse.status === 200 &&
-                networkResponse.type === "basic"
-              ) {
-                return caches
-                  .open(CACHE_NAME)
-                  .then((cache) => cache.put(event.request, networkResponse.clone()));
-              }
-            })
-            .catch(() => undefined)
-        );
+        fetch(event.request)
+          .then((networkResponse) => {
+            if (
+              networkResponse &&
+              networkResponse.status === 200 &&
+              networkResponse.type === "basic"
+            ) {
+              caches
+                .open(CACHE_NAME)
+                .then((cache) => cache.put(event.request, networkResponse.clone()));
+            }
+          })
+          .catch(() => undefined);
         return cachedResponse;
       }
 
@@ -102,9 +100,7 @@ self.addEventListener("fetch", (event) => {
             networkResponse.type === "basic"
           ) {
             const copy = networkResponse.clone();
-            event.waitUntil(
-              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy))
-            );
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
           }
           return networkResponse;
         })
