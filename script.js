@@ -1,19 +1,9 @@
 // ============================================
 // CONFIGURAZIONE TRACCE
 // ============================================
-// Le canzoni vengono caricate automaticamente dalla cartella /music
-// Formato nome file: "Artista - Titolo canzone.mp3"
-//
-// IMMAGINI DI COPERTINA:
-// - Cerca automaticamente in /images con lo stesso nome del file MP3
-// - Prova prima .jpg, poi .png, poi usa /images/cover.jpg come fallback
-// - Esempio: "Aerosmith - I Don't Want to Miss a Thing.mp3"
-//   cerca "Aerosmith - I Don't Want to Miss a Thing.jpg" o ".png"
-//
-// VIDEO CANVAS:
-// - Cerca automaticamente in /videos con lo stesso nome del file MP3 ma con estensione .mp4
-// - Esempio: "Aerosmith - I Don't Want to Miss a Thing.mp3"
-//   cerca "Aerosmith - I Don't Want to Miss a Thing.mp4"
+// La playlist e i relativi asset sono definiti in soundtrack-catalog.js.
+// Audio, cover, video e lyrics usano percorsi espliciti: nessuna derivazione
+// da vecchie versioni della playlist e nessun preload globale implicito.
 
 // Catalogo canonico condiviso con il Service Worker.
 const catalogAssets = globalThis.SOUNDTRACK_CATALOG;
@@ -70,7 +60,6 @@ let isDragging = false; // Stato per il trascinamento della barra
 
 // Cache per le risorse pre-caricate
 const imageCache = new Map(); // Cache delle immagini
-const audioCache = new Map(); // Cache degli audio (per metadata)
 
 // Elementi DOM
 const audioPlayer = document.getElementById("audioPlayer");
@@ -95,6 +84,12 @@ const seekTooltip = document.getElementById("seekTooltip");
 const lyricsText = document.getElementById("lyricsText");
 const lyricsToggle = document.getElementById("lyricsToggle");
 const lyricsContent = document.getElementById("lyricsContent");
+const offlineBadge = document.getElementById("offlineBadge");
+const offlineStatus = document.getElementById("offlineStatus");
+const offlineProgress = document.getElementById("offlineProgress");
+const offlineProgressFill = document.getElementById("offlineProgressFill");
+const offlineDownloadBtn = document.getElementById("offlineDownloadBtn");
+const offlineRemoveBtn = document.getElementById("offlineRemoveBtn");
 
 // ============================================
 // INIZIALIZZAZIONE
@@ -106,11 +101,7 @@ async function init() {
   // Setup event listeners
   setupEventListeners();
 
-  // Avvia il preload delle risorse in background
-  preloadAllResources().then(() => {
-    console.log("Tutte le risorse sono state pre-caricate");
-  });
-
+  // Nessun preload globale: i media vengono caricati solo quando servono.
   // Carica il primo brano (senza riprodurlo e senza mostrare preload)
   if (tracks.length > 0) {
     await loadTrack(0, true);
@@ -174,80 +165,6 @@ function preloadImage(src) {
     };
     img.src = src;
   });
-}
-
-function preloadAudio(src) {
-  return new Promise((resolve, reject) => {
-    // Controlla se l'audio è già in cache
-    if (audioCache.has(src)) {
-      resolve(audioCache.get(src));
-      return;
-    }
-
-    const audio = new Audio();
-    audio.preload = "metadata";
-
-    audio.addEventListener(
-      "loadedmetadata",
-      () => {
-        audioCache.set(src, audio);
-        resolve(audio);
-      },
-      { once: true }
-    );
-
-    audio.addEventListener(
-      "error",
-      () => {
-        reject(new Error(`Failed to load audio: ${src}`));
-      },
-      { once: true }
-    );
-
-    audio.src = src;
-  });
-}
-
-async function preloadImageFromPaths(paths) {
-  // Prova a caricare la prima immagine disponibile dalla lista di percorsi
-  for (const path of paths) {
-    try {
-      await preloadImage(path);
-      return path; // Restituisce il percorso dell'immagine caricata
-    } catch (error) {
-      // Continua con il prossimo percorso
-      continue;
-    }
-  }
-  // Se nessuna immagine è stata trovata, prova il fallback
-  try {
-    await preloadImage("images/cover.jpg");
-    return "images/cover.jpg";
-  } catch (error) {
-    throw new Error("Nessuna immagine disponibile");
-  }
-}
-
-async function preloadAllResources() {
-  console.log("Inizio preload delle risorse...");
-  const preloadPromises = [];
-
-  tracks.forEach((track, index) => {
-    preloadPromises.push(
-      preloadImage(track.cover).catch(() => {
-        console.warn(`Impossibile preloadare immagine per traccia ${index + 1}`);
-      })
-    );
-
-    preloadPromises.push(
-      preloadAudio(track.file).catch(() => {
-        console.warn(`Impossibile preloadare audio per traccia ${index + 1}`);
-      })
-    );
-  });
-
-  await Promise.allSettled(preloadPromises);
-  console.log("Preload completato");
 }
 
 // ============================================
@@ -323,68 +240,38 @@ async function loadTrack(index, showPreload = true) {
   // Promesse per tracciare il caricamento di tutte le risorse
   const loadPromises = [];
 
-  // Carica audio
+  // Carica solo l'audio della traccia selezionata.
   const audioPromise = (async () => {
     try {
-      // Se l'audio è in cache, usa quello, altrimenti carica normalmente
-      if (audioCache.has(track.file)) {
-        const cachedAudio = audioCache.get(track.file);
-        audioPlayer.src = track.file;
-        audioPlayer.load();
-        // La durata dovrebbe essere già disponibile
-        if (cachedAudio.duration && !isNaN(cachedAudio.duration)) {
-          totalTimeEl.textContent = formatTime(cachedAudio.duration);
-        } else {
-          // Se la durata non è disponibile, aspetta i metadata
-          await new Promise((resolve) => {
-            const timeout = setTimeout(() => {
-              totalTimeEl.textContent = "0:00";
-              resolve();
-            }, 3000);
+      audioPlayer.src = track.file;
+      audioPlayer.load();
 
-            audioPlayer.addEventListener(
-              "loadedmetadata",
-              () => {
-                clearTimeout(timeout);
-                totalTimeEl.textContent = formatTime(audioPlayer.duration);
-                resolve();
-              },
-              { once: true }
-            );
-          });
-        }
-      } else {
-        audioPlayer.src = track.file;
-        audioPlayer.load();
-        // Attendi che i metadata siano caricati
-        await new Promise((resolve) => {
-          const timeout = setTimeout(() => {
-            // Timeout: continua comunque senza bloccare
+      await new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          totalTimeEl.textContent = "0:00";
+          resolve();
+        }, 10000);
+
+        audioPlayer.addEventListener(
+          "loadedmetadata",
+          () => {
+            clearTimeout(timeout);
+            totalTimeEl.textContent = formatTime(audioPlayer.duration);
+            resolve();
+          },
+          { once: true }
+        );
+
+        audioPlayer.addEventListener(
+          "error",
+          () => {
+            clearTimeout(timeout);
             totalTimeEl.textContent = "0:00";
             resolve();
-          }, 10000); // Timeout più lungo per connessioni lente
-
-          audioPlayer.addEventListener(
-            "loadedmetadata",
-            () => {
-              clearTimeout(timeout);
-              totalTimeEl.textContent = formatTime(audioPlayer.duration);
-              resolve();
-            },
-            { once: true }
-          );
-
-          audioPlayer.addEventListener(
-            "error",
-            () => {
-              clearTimeout(timeout);
-              totalTimeEl.textContent = "0:00";
-              resolve(); // Continua anche in caso di errore
-            },
-            { once: true }
-          );
-        });
-      }
+          },
+          { once: true }
+        );
+      });
     } catch (error) {
       console.warn("Errore nel caricamento audio:", error);
       totalTimeEl.textContent = "0:00";
@@ -757,61 +644,241 @@ function setupEventListeners() {
 // ============================================
 // SERVICE WORKER REGISTRATION
 // ============================================
-async function registerServiceWorker() {
-  if ("serviceWorker" in navigator) {
-    try {
-      const registration = await navigator.serviceWorker.register(
-        "./service-worker.js",
-        {
-          scope: "./",
-        }
-      );
-      console.log(
-        "[Service Worker] Registrato con successo:",
-        registration.scope
-      );
+const OFFLINE_ESTIMATE_BYTES = 150 * 1024 * 1024;
+let offlineBusy = false;
 
-      // Controlla lo stato del service worker
-      if (registration.installing) {
-        console.log("[Service Worker] Installazione in corso...");
-      } else if (registration.waiting) {
-        console.log("[Service Worker] In attesa di attivazione...");
-      } else if (registration.active) {
-        console.log("[Service Worker] Attivo e funzionante");
-      }
+function setOfflineProgress(completed, total) {
+  const ratio = total > 0 ? completed / total : 0;
+  offlineProgressFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
+}
 
-      // Controlla se c'è un aggiornamento disponibile
-      registration.addEventListener("updatefound", () => {
-        const newWorker = registration.installing;
-        console.log("[Service Worker] Trovato aggiornamento");
+function renderOfflineStatus(status) {
+  if (!offlineBadge || !offlineStatus) return;
 
-        newWorker.addEventListener("statechange", () => {
-          if (
-            newWorker.state === "installed" &&
-            navigator.serviceWorker.controller
-          ) {
-            console.log("[Service Worker] Nuova versione disponibile");
-            // Potresti mostrare un messaggio all'utente per aggiornare
-          } else if (newWorker.state === "activated") {
-            console.log("[Service Worker] Nuova versione attivata");
-          }
-        });
-      });
+  const {
+    completeTracks = 0,
+    totalTracks = tracks.length,
+    cachedResources = 0,
+    totalResources = tracks.length * 4,
+    complete = false,
+  } = status || {};
 
-      // Verifica periodicamente gli aggiornamenti
-      setInterval(() => {
-        registration.update();
-      }, 60000); // Controlla ogni minuto
-    } catch (error) {
-      console.error("[Service Worker] Errore durante la registrazione:", error);
-    }
+  offlineBadge.classList.remove("ready", "error");
+
+  if (complete) {
+    offlineBadge.textContent = "Completa";
+    offlineBadge.classList.add("ready");
+    offlineStatus.textContent = `${totalTracks}/${totalTracks} brani disponibili offline.`;
+    offlineDownloadBtn.textContent = "Playlist disponibile offline";
+    offlineDownloadBtn.disabled = true;
   } else {
-    console.warn("[Service Worker] Non supportato in questo browser");
+    offlineBadge.textContent = completeTracks > 0 ? "Parziale" : "Solo app";
+    offlineStatus.textContent =
+      completeTracks > 0
+        ? `${completeTracks}/${totalTracks} brani completi offline · ${cachedResources}/${totalResources} asset in cache.`
+        : "L'app è installabile offline; i brani vengono scaricati solo su richiesta.";
+    offlineDownloadBtn.textContent =
+      completeTracks > 0
+        ? "Completa download offline"
+        : "Scarica playlist (~125 MB)";
+    offlineDownloadBtn.disabled = offlineBusy;
+  }
+
+  offlineRemoveBtn.classList.toggle("hidden", cachedResources === 0);
+  offlineRemoveBtn.disabled = offlineBusy;
+}
+
+async function getServiceWorkerTarget() {
+  if (!("serviceWorker" in navigator)) return null;
+  const registration = await navigator.serviceWorker.ready;
+  return navigator.serviceWorker.controller || registration.active;
+}
+
+async function sendServiceWorkerMessage(type) {
+  const worker = await getServiceWorkerTarget();
+  if (!worker) throw new Error("Service Worker non disponibile.");
+  worker.postMessage({ type });
+}
+
+async function requestOfflineStatus() {
+  try {
+    await sendServiceWorkerMessage("GET_OFFLINE_STATUS");
+  } catch (error) {
+    offlineBadge.textContent = "Non disponibile";
+    offlineBadge.classList.add("error");
+    offlineStatus.textContent = "Il browser non supporta il download offline della playlist.";
+    offlineDownloadBtn.disabled = true;
   }
 }
 
-// Registra il service worker all'avvio
-registerServiceWorker();
+async function hasEnoughOfflineStorage() {
+  if (!navigator.storage?.estimate) return true;
+
+  const estimate = await navigator.storage.estimate();
+  if (!Number.isFinite(estimate.quota) || !Number.isFinite(estimate.usage)) {
+    return true;
+  }
+
+  return estimate.quota - estimate.usage >= OFFLINE_ESTIMATE_BYTES;
+}
+
+function setupOfflineControls() {
+  if (!offlineDownloadBtn || !offlineRemoveBtn) return;
+
+  if (!("serviceWorker" in navigator)) {
+    renderOfflineStatus({});
+    offlineBadge.textContent = "Non supportato";
+    offlineBadge.classList.add("error");
+    offlineDownloadBtn.disabled = true;
+    return;
+  }
+
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    const data = event.data || {};
+
+    if (data.type === "OFFLINE_STATUS") {
+      renderOfflineStatus(data);
+      return;
+    }
+
+    if (data.type === "OFFLINE_PROGRESS") {
+      offlineBusy = true;
+      offlineProgress.classList.remove("hidden");
+      offlineProgress.setAttribute("aria-hidden", "false");
+      setOfflineProgress(data.completedTracks, data.totalTracks);
+      offlineBadge.textContent = "Download";
+      offlineStatus.textContent = `Scaricamento ${data.completedTracks}/${data.totalTracks}: ${data.file}`;
+      offlineDownloadBtn.disabled = true;
+      offlineRemoveBtn.disabled = true;
+      return;
+    }
+
+    if (data.type === "OFFLINE_COMPLETE") {
+      offlineBusy = false;
+      offlineProgress.classList.add("hidden");
+      offlineProgress.setAttribute("aria-hidden", "true");
+      setOfflineProgress(0, 1);
+
+      if (data.complete) {
+        renderOfflineStatus(data);
+      } else {
+        renderOfflineStatus(data);
+        offlineBadge.textContent = "Incompleto";
+        offlineBadge.classList.add("error");
+        offlineStatus.textContent =
+          data.errors > 0
+            ? `Download incompleto: ${data.completeTracks}/${data.totalTracks} brani. Riprova con una connessione stabile.`
+            : offlineStatus.textContent;
+      }
+      return;
+    }
+
+    if (data.type === "OFFLINE_REMOVED") {
+      offlineBusy = false;
+      offlineProgress.classList.add("hidden");
+      offlineProgress.setAttribute("aria-hidden", "true");
+      setOfflineProgress(0, 1);
+      renderOfflineStatus(data);
+    }
+  });
+
+  offlineDownloadBtn.addEventListener("click", async () => {
+    if (offlineBusy) return;
+
+    try {
+      const enoughStorage = await hasEnoughOfflineStorage();
+      if (!enoughStorage) {
+        offlineBadge.textContent = "Spazio insufficiente";
+        offlineBadge.classList.add("error");
+        offlineStatus.textContent =
+          "Servono circa 125 MB liberi, più margine per la cache del browser.";
+        return;
+      }
+
+      offlineBusy = true;
+      offlineDownloadBtn.disabled = true;
+      offlineRemoveBtn.disabled = true;
+      offlineProgress.classList.remove("hidden");
+      offlineProgress.setAttribute("aria-hidden", "false");
+      setOfflineProgress(0, tracks.length);
+      offlineBadge.textContent = "Preparazione";
+      offlineStatus.textContent = "Avvio download offline...";
+
+      if (navigator.storage?.persist) {
+        navigator.storage.persist().catch(() => false);
+      }
+
+      await sendServiceWorkerMessage("CACHE_OFFLINE_LIBRARY");
+    } catch (error) {
+      offlineBusy = false;
+      offlineBadge.textContent = "Errore";
+      offlineBadge.classList.add("error");
+      offlineStatus.textContent = error.message;
+      offlineDownloadBtn.disabled = false;
+      offlineRemoveBtn.disabled = false;
+    }
+  });
+
+  offlineRemoveBtn.addEventListener("click", async () => {
+    if (offlineBusy) return;
+    if (!window.confirm("Rimuovere i media scaricati per l'ascolto offline?")) return;
+
+    offlineBusy = true;
+    offlineDownloadBtn.disabled = true;
+    offlineRemoveBtn.disabled = true;
+    offlineBadge.textContent = "Rimozione";
+    offlineStatus.textContent = "Rimozione download offline...";
+
+    try {
+      await sendServiceWorkerMessage("REMOVE_OFFLINE_LIBRARY");
+    } catch (error) {
+      offlineBusy = false;
+      offlineBadge.textContent = "Errore";
+      offlineBadge.classList.add("error");
+      offlineStatus.textContent = error.message;
+      offlineDownloadBtn.disabled = false;
+      offlineRemoveBtn.disabled = false;
+    }
+  });
+
+  requestOfflineStatus();
+}
+
+async function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) {
+    console.warn("[Service Worker] Non supportato in questo browser");
+    return null;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.register(
+      "./service-worker.js",
+      { scope: "./" }
+    );
+
+    registration.addEventListener("updatefound", () => {
+      const newWorker = registration.installing;
+      if (!newWorker) return;
+
+      newWorker.addEventListener("statechange", () => {
+        if (
+          newWorker.state === "installed" &&
+          navigator.serviceWorker.controller
+        ) {
+          console.log("[Service Worker] Nuova versione disponibile");
+        }
+      });
+    });
+
+    setInterval(() => registration.update(), 60000);
+    return registration;
+  } catch (error) {
+    console.error("[Service Worker] Errore durante la registrazione:", error);
+    return null;
+  }
+}
+
+registerServiceWorker().finally(setupOfflineControls);
 
 // ============================================
 // HERO SECTION
