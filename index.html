@@ -42,23 +42,20 @@
       <!-- SIDEBAR SINISTRA - PLAYLIST -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h1 class="logo">Our Soundtrack</h1>
-          <div class="offline-panel" id="offlinePanel">
-            <div class="offline-heading">
-              <span>Offline</span>
-              <span id="offlineBadge" class="offline-badge">Verifica...</span>
-            </div>
-            <p id="offlineStatus" class="offline-status">
-              Controllo disponibilità offline...
-            </p>
-            <div id="offlineProgress" class="offline-progress hidden" aria-hidden="true">
-              <div id="offlineProgressFill" class="offline-progress-fill"></div>
-            </div>
-            <button id="offlineDownloadBtn" class="offline-btn" type="button">
-              Scarica playlist (~125 MB)
-            </button>
-            <button id="offlineRemoveBtn" class="offline-btn secondary hidden" type="button">
-              Rimuovi download offline
+          <div class="sidebar-title-row">
+            <h1 class="logo">Our Soundtrack</h1>
+            <button
+              id="offlineOpenBtn"
+              class="offline-trigger"
+              type="button"
+              aria-haspopup="dialog"
+              aria-controls="offlineModal"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v10.2l3.6-3.6L17 11l-5 5-5-5 1.4-1.4 3.6 3.6V3h2zM5 19h14v2H5z"/>
+              </svg>
+              <span id="offlineTriggerLabel">Offline</span>
+              <span id="offlineTriggerDot" class="offline-trigger-dot" aria-hidden="true"></span>
             </button>
           </div>
         </div>
@@ -184,6 +181,61 @@
           </div>
         </div>
       </main>
+    </div>
+
+    <!-- Offline download panel -->
+    <div id="offlineModal" class="offline-modal hidden" aria-hidden="true">
+      <div class="offline-backdrop" data-offline-close></div>
+      <section
+        class="offline-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="offlineTitle"
+        aria-describedby="offlineIntro"
+        tabindex="-1"
+      >
+        <div class="offline-sheet-header">
+          <div>
+            <h2 id="offlineTitle">Ascolta senza Internet</h2>
+            <p id="offlineIntro">
+              Scarica la playlist su questo dispositivo per ascoltare tutti i 20 brani anche offline.
+              Circa 125 MB.
+            </p>
+          </div>
+          <button id="offlineCloseBtn" class="offline-close" type="button" aria-label="Chiudi">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5z"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="offline-status-card">
+          <div class="offline-heading">
+            <span>Stato</span>
+            <span id="offlineBadge" class="offline-badge">Verifica...</span>
+          </div>
+          <p id="offlineStatus" class="offline-status">
+            Controllo disponibilità offline...
+          </p>
+          <div id="offlineProgress" class="offline-progress hidden" aria-hidden="true">
+            <div id="offlineProgressFill" class="offline-progress-fill"></div>
+          </div>
+        </div>
+
+        <div class="offline-actions">
+          <button id="offlineDownloadBtn" class="offline-btn" type="button">
+            Scarica playlist · ~125 MB
+          </button>
+          <button id="offlineRemoveBtn" class="offline-btn secondary hidden" type="button">
+            Rimuovi download
+          </button>
+        </div>
+
+        <p class="offline-note">
+          Il download resta nel browser di questo dispositivo. Se cancelli i dati del sito,
+          dovrai scaricarlo di nuovo.
+        </p>
+      </section>
     </div>
 
     <!-- Audio element (nascosto) -->

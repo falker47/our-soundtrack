@@ -204,12 +204,141 @@ body {
   letter-spacing: -0.5px;
 }
 
-.offline-panel {
-  margin-top: 18px;
+.sidebar-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.offline-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.offline-trigger:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.offline-trigger.ready {
+  color: var(--text-active);
+  border-color: rgba(4, 188, 99, 0.35);
+  background: rgba(4, 188, 99, 0.08);
+}
+
+.offline-trigger svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
+.offline-trigger-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+}
+
+.offline-trigger.ready .offline-trigger-dot {
+  opacity: 1;
+}
+
+.offline-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.offline-modal.hidden {
+  display: none;
+}
+
+.offline-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.offline-sheet {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 460px);
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: #181818;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  outline: none;
+}
+
+.offline-sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.offline-sheet h2 {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.offline-sheet-header p {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.offline-close {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.offline-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+}
+
+.offline-close svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.offline-status-card {
+  margin-top: 20px;
   padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .offline-heading {
@@ -223,8 +352,8 @@ body {
 
 .offline-badge {
   color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .offline-badge.ready {
@@ -238,17 +367,22 @@ body {
 .offline-status {
   margin-top: 8px;
   color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.35;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .offline-progress {
   width: 100%;
-  height: 5px;
-  margin-top: 10px;
+  height: 6px;
+  margin-top: 12px;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
+}
+
+.offline-progress.hidden,
+.offline-btn.hidden {
+  display: none;
 }
 
 .offline-progress-fill {
@@ -258,16 +392,21 @@ body {
   transition: width 0.2s ease;
 }
 
+.offline-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 .offline-btn {
   width: 100%;
-  margin-top: 10px;
-  padding: 9px 10px;
+  padding: 12px 14px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--text-active);
   color: #06130b;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -285,6 +424,14 @@ body {
   background: transparent;
   color: var(--text-secondary);
   border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.offline-note {
+  margin-top: 14px;
+  color: #858585;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .playlist {
@@ -824,6 +971,21 @@ body {
 @media (max-width: 768px) {
   .container {
     flex-direction: column;
+  }
+
+  .offline-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .offline-sheet {
+    width: 100%;
+    max-width: none;
+    padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
+    border-radius: 20px 20px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
   }
 
   .menu-toggle {
