@@ -15,79 +15,46 @@
 // - Esempio: "Aerosmith - I Don't Want to Miss a Thing.mp3"
 //   cerca "Aerosmith - I Don't Want to Miss a Thing.mp4"
 
-// Lista dei file MP3 nella cartella music
-const musicFiles = [
-  "Mauri e Rita - Die With A Smile (cover).mp3",
-  "Mauri - Eternity (cover).mp3",
-  "Mauri - Grow Old with Me (cover).mp3",
-  "Bill Medley & Jennifer Warnes - (I've had) The Time Of My Life.mp3",
-  "Bruno Mars - Just the Way you are.mp3",
-  "Ed Sheeran - Perfect Symphony (ft. Andrea Bocelli).mp3",
-  "Elvis Presley - Burning Love.mp3",
-  "Giorgia - È l'amore che conta.mp3",
-  "Harry James & His Orchestra - It's Been a Long, Long Time.mp3",
-  "Il Volo - Capolavoro.mp3",
-  "Imagine Dragons - Next To Me.mp3",
-  "John Legend - All of Me.mp3",
-  "Jovanotti - Come Musica.mp3",
-  "Laura Chiatti - Il mio nuovo sogno.mp3",
-  "Luca Laurenti - La mia Evangeline.mp3",
-  "Marvin Berry and the Starlighters - Earth Angel.mp3",
-  "Sebastian Yatra - Dos Oruguitas.mp3",
-  "Simone Iuè - In ogni parte del mio corazon.mp3",
-  "Ultimo - Poesia senza veli.mp3",
-  "Zac Efron - Rewrite The Stars.mp3",
-];
+// Catalogo canonico condiviso con il Service Worker.
+const catalogAssets = globalThis.SOUNDTRACK_CATALOG;
+if (!Array.isArray(catalogAssets) || catalogAssets.length === 0) {
+  throw new Error("Soundtrack catalog non disponibile.");
+}
 
 // Funzione per parsare il nome del file e estrarre artista e titolo
 function parseFileName(fileName) {
-  // Rimuove l'estensione .mp3
   const nameWithoutExt = fileName.replace(/\.mp3$/i, "");
-  // Divide per " - " (spazio, trattino, spazio)
   const parts = nameWithoutExt.split(" - ");
 
   if (parts.length >= 2) {
     return {
       artist: parts[0].trim(),
-      title: parts.slice(1).join(" - ").trim(), // Usa slice per gestire titoli con " - " nel nome
-    };
-  } else {
-    // Se non c'è il formato corretto, usa tutto come titolo
-    return {
-      artist: "",
-      title: nameWithoutExt.trim(),
+      title: parts.slice(1).join(" - ").trim(),
     };
   }
+
+  return {
+    artist: "",
+    title: nameWithoutExt.trim(),
+  };
 }
 
-// Genera automaticamente l'array tracks
-const tracks = musicFiles.map((fileName, index) => {
-  const parsed = parseFileName(fileName);
+// Genera l'array player dalla stessa fonte di verità usata dal PWA.
+const tracks = catalogAssets.map((asset) => {
+  const parsed = parseFileName(asset.file);
   const trackTitle =
     parsed.artist && parsed.title
       ? `${parsed.artist} - ${parsed.title}`
-      : parsed.title || fileName;
-
-  // Cerca un video corrispondente nella cartella videos
-  // Il video dovrebbe avere lo stesso nome del file MP3 ma con estensione .mp4
-  const videoFileName = fileName.replace(/\.mp3$/i, ".mp4");
-  const videoPath = `videos/${videoFileName}`;
-
-  // Cerca un'immagine di copertina corrispondente nella cartella images
-  // L'immagine dovrebbe avere lo stesso nome del file MP3 ma con estensione .jpg o .png
-  const imageNameWithoutExt = fileName.replace(/\.mp3$/i, "");
-  const coverPathJpg = `images/${imageNameWithoutExt}.jpg`;
-  const coverPathPng = `images/${imageNameWithoutExt}.png`;
-  // Usa .jpg come default, ma verrà verificato se esiste
-  const coverPath = coverPathJpg;
+      : parsed.title || asset.file;
 
   return {
     title: trackTitle,
-    artist: parsed.artist || "", // Nome dell'artista
-    songTitle: parsed.title || fileName, // Solo il titolo della canzone
-    file: `music/${fileName}`,
-    cover: coverPath, // L'immagine verrà verificata quando viene caricata
-    canvas: videoPath, // Il video verrà verificato quando viene caricato
+    artist: parsed.artist || "",
+    songTitle: parsed.title || asset.file,
+    file: asset.audio,
+    cover: asset.cover,
+    canvas: asset.video,
+    lyrics: asset.lyrics,
   };
 });
 
@@ -266,28 +233,12 @@ async function preloadAllResources() {
   const preloadPromises = [];
 
   tracks.forEach((track, index) => {
-    // Preload immagini
-    const imageNameWithoutExt = track.file
-      .replace(/^music\//, "")
-      .replace(/\.mp3$/i, "");
-    const possibleImagePaths = [
-      `images/cover/${imageNameWithoutExt}.jpg`,
-      `images/cover/${imageNameWithoutExt}.png`,
-      `images/${imageNameWithoutExt}.jpg`,
-      `images/${imageNameWithoutExt}.png`,
-    ];
-
-    // Prova a preloadare la prima immagine disponibile
     preloadPromises.push(
-      preloadImageFromPaths(possibleImagePaths).catch(() => {
-        // Ignora errori, useremo il fallback quando necessario
-        console.warn(
-          `Impossibile preloadare immagine per traccia ${index + 1}`
-        );
+      preloadImage(track.cover).catch(() => {
+        console.warn(`Impossibile preloadare immagine per traccia ${index + 1}`);
       })
     );
 
-    // Preload audio metadata
     preloadPromises.push(
       preloadAudio(track.file).catch(() => {
         console.warn(`Impossibile preloadare audio per traccia ${index + 1}`);
@@ -295,7 +246,6 @@ async function preloadAllResources() {
     );
   });
 
-  // Attendi che tutte le risorse siano caricate (o fallite)
   await Promise.allSettled(preloadPromises);
   console.log("Preload completato");
 }
@@ -303,87 +253,32 @@ async function preloadAllResources() {
 // ============================================
 // CARICAMENTO IMMAGINI DI COPERTINA
 // ============================================
-async function loadCoverImage(musicFilePath) {
-  // Estrae il nome del file senza estensione
-  const imageNameWithoutExt = musicFilePath
-    .replace(/^music\//, "")
-    .replace(/\.mp3$/i, "");
+async function loadCoverImage(coverPath) {
+  const fallbackPath = "images/Album cover front.jpg";
 
-  // Lista di possibili percorsi da provare (in ordine di priorità)
-  const possiblePaths = [
-    `images/cover/${imageNameWithoutExt}.jpg`, // Prima prova nella cartella cover
-    `images/cover/${imageNameWithoutExt}.png`,
-    `images/${imageNameWithoutExt}.jpg`, // Poi prova direttamente in images
-    `images/${imageNameWithoutExt}.png`,
-  ];
-
-  // Funzione helper per impostare l'immagine e attendere il caricamento
-  const setImageAndWait = (src) => {
-    return new Promise((resolve) => {
-      // Rimuovi tutti gli handler precedenti
-      albumCover.onload = null;
-      albumCover.onerror = null;
-
-      // Se l'immagine è già caricata, risolvi immediatamente
-      if (albumCover.src === src && albumCover.complete) {
-        resolve();
-        return;
-      }
-
-      // Imposta i nuovi handler
-      const onLoad = () => {
-        albumCover.onload = null;
-        albumCover.onerror = null;
-        resolve();
-      };
-
-      const onError = () => {
-        albumCover.onload = null;
-        albumCover.onerror = null;
-        resolve(); // Continua anche in caso di errore
-      };
-
-      albumCover.onload = onLoad;
-      albumCover.onerror = onError;
-
-      // Imposta il src (questo triggera il caricamento)
+  const setImageAndWait = (src) =>
+    new Promise((resolve) => {
+      albumCover.onload = () => resolve();
+      albumCover.onerror = () => resolve();
       albumCover.src = src;
-
-      // Se l'immagine è già in cache del browser, potrebbe essere immediata
-      if (albumCover.complete) {
-        onLoad();
-      }
+      if (albumCover.complete) resolve();
     });
-  };
 
-  // Prova a caricare l'immagine dalla cache o dal percorso
-  for (const path of possiblePaths) {
-    if (imageCache.has(path)) {
-      // Usa l'immagine dalla cache
-      await setImageAndWait(path);
-      return;
-    }
-
-    try {
-      await preloadImage(path);
-      await setImageAndWait(path);
-      return;
-    } catch (error) {
-      // Continua con il prossimo percorso
-      continue;
-    }
-  }
-
-  // Se nessuna immagine è stata trovata, usa il fallback
   try {
-    const fallbackPath = "images/cover.jpg";
-    if (!imageCache.has(fallbackPath)) {
-      await preloadImage(fallbackPath);
+    if (!imageCache.has(coverPath)) {
+      await preloadImage(coverPath);
     }
-    await setImageAndWait(fallbackPath);
+    await setImageAndWait(coverPath);
   } catch (error) {
-    console.warn("Nessuna immagine di copertina disponibile");
-    // Continua comunque senza bloccare
+    console.warn("Cover non disponibile, uso fallback:", coverPath);
+    try {
+      if (!imageCache.has(fallbackPath)) {
+        await preloadImage(fallbackPath);
+      }
+      await setImageAndWait(fallbackPath);
+    } catch {
+      console.warn("Fallback cover non disponibile");
+    }
   }
 }
 
@@ -419,7 +314,7 @@ async function loadTrack(index, showPreload = true) {
   updateActiveTrack();
 
   // Carica i testi della canzone
-  loadLyrics(track.file);
+  loadLyrics(track.lyrics);
 
   // Reset progress bar
   progressFill.style.width = "0%";
@@ -498,7 +393,7 @@ async function loadTrack(index, showPreload = true) {
   loadPromises.push(audioPromise);
 
   // Carica immagine
-  const imagePromise = loadCoverImage(track.file);
+  const imagePromise = loadCoverImage(track.cover);
   loadPromises.push(imagePromise);
 
   // Carica video (se presente)
@@ -778,13 +673,7 @@ function updateActiveTrack() {
 // ============================================
 // LYRICS
 // ============================================
-async function loadLyrics(trackFilePath) {
-  // Converti il percorso del file audio in percorso del file lyrics
-  // music/Artist - Title.mp3 -> lyrics/Artist - Title.txt
-  const lyricsPath = trackFilePath
-    .replace(/^music\//, 'lyrics/')
-    .replace(/\.mp3$/i, '.txt');
-
+async function loadLyrics(lyricsPath) {
   try {
     const response = await fetch(lyricsPath);
     if (!response.ok) {
@@ -872,9 +761,9 @@ async function registerServiceWorker() {
   if ("serviceWorker" in navigator) {
     try {
       const registration = await navigator.serviceWorker.register(
-        "/service-worker.js",
+        "./service-worker.js",
         {
-          scope: "/",
+          scope: "./",
         }
       );
       console.log(
