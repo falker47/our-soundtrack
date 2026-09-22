@@ -156,6 +156,18 @@ if (!script.includes("offlinePercent.textContent")) {
   throw new Error("Download progress percentage is not rendered inside the icon.");
 }
 
+if (!styles.includes("left: 20px;") || !styles.includes("right: auto;")) {
+  throw new Error("Mobile hamburger must be anchored on the left.");
+}
+
+if (!styles.includes(".offline-download-control.ready #offlineCheckGlyph") || !styles.includes("transform: scale(0.76)")) {
+  throw new Error("Completed-download tick must remain visually reduced.");
+}
+
+if (!styles.includes("color: #86a18d;")) {
+  throw new Error("Completed-download state must use the muted success color.");
+}
+
 if (currentSources.includes("images/cover.jpg")) {
   throw new Error("Stale missing images/cover.jpg fallback is still referenced.");
 }
