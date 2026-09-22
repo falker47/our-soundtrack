@@ -84,16 +84,11 @@ const seekTooltip = document.getElementById("seekTooltip");
 const lyricsText = document.getElementById("lyricsText");
 const lyricsToggle = document.getElementById("lyricsToggle");
 const lyricsContent = document.getElementById("lyricsContent");
-const offlineOpenBtn = document.getElementById("offlineOpenBtn");
-const offlineModal = document.getElementById("offlineModal");
-const offlineCloseBtn = document.getElementById("offlineCloseBtn");
-const offlineTriggerLabel = document.getElementById("offlineTriggerLabel");
-const offlineBadge = document.getElementById("offlineBadge");
-const offlineStatus = document.getElementById("offlineStatus");
-const offlineProgress = document.getElementById("offlineProgress");
-const offlineProgressFill = document.getElementById("offlineProgressFill");
-const offlineDownloadBtn = document.getElementById("offlineDownloadBtn");
-const offlineRemoveBtn = document.getElementById("offlineRemoveBtn");
+const offlineDownloadControl = document.getElementById("offlineDownloadControl");
+const offlineProgressRing = document.getElementById("offlineProgressRing");
+const offlinePercent = document.getElementById("offlinePercent");
+const offlineDownloadGlyph = document.getElementById("offlineDownloadGlyph");
+const offlineCheckGlyph = document.getElementById("offlineCheckGlyph");
 
 // ============================================
 // INIZIALIZZAZIONE
@@ -649,92 +644,129 @@ function setupEventListeners() {
 // SERVICE WORKER REGISTRATION
 // ============================================
 const OFFLINE_ESTIMATE_BYTES = 150 * 1024 * 1024;
+const OFFLINE_RING_LENGTH = 2 * Math.PI * 19;
 let offlineBusy = false;
+let offlineComplete = false;
 
-function openOfflineModal() {
-  if (!offlineModal) return;
+function setOfflineProgress(progress) {
+  if (!offlineProgressRing || !offlinePercent) return;
 
-  offlineModal.classList.remove("hidden");
-  offlineModal.setAttribute("aria-hidden", "false");
+  const normalized = Math.max(0, Math.min(1, progress));
+  const percent = Math.round(normalized * 100);
 
-  if (window.innerWidth <= 768) {
-    sidebar.classList.remove("open");
-    menuToggle.classList.remove("active");
-  }
-
-  offlineCloseBtn?.focus();
-  requestOfflineStatus();
+  offlineProgressRing.style.strokeDasharray = String(OFFLINE_RING_LENGTH);
+  offlineProgressRing.style.strokeDashoffset = String(
+    OFFLINE_RING_LENGTH * (1 - normalized)
+  );
+  offlinePercent.textContent = `${percent}%`;
 }
 
-function closeOfflineModal() {
-  if (!offlineModal) return;
+function setOfflineControlState(mode, progress = 0) {
+  if (!offlineDownloadControl) return;
 
-  offlineModal.classList.add("hidden");
-  offlineModal.setAttribute("aria-hidden", "true");
-  offlineOpenBtn?.focus();
-}
+  offlineDownloadControl.classList.remove(
+    "idle",
+    "partial",
+    "preparing",
+    "downloading",
+    "ready",
+    "error"
+  );
+  offlineDownloadControl.classList.add(mode);
 
-function setOfflineProgress(completed, total) {
-  const ratio = total > 0 ? completed / total : 0;
-  offlineProgressFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
-}
+  offlineDownloadGlyph?.classList.toggle("hidden", mode === "ready");
+  offlineCheckGlyph?.classList.toggle("hidden", mode !== "ready");
 
-function setOfflineTriggerState(complete) {
-  offlineOpenBtn?.classList.toggle("ready", Boolean(complete));
+  const showPercent =
+    mode === "partial" || mode === "preparing" || mode === "downloading";
+  offlinePercent?.classList.toggle("hidden", !showPercent);
 
-  if (offlineTriggerLabel) {
-    offlineTriggerLabel.textContent = complete ? "Offline ✓" : "Offline";
-  }
-
-  if (offlineOpenBtn) {
-    offlineOpenBtn.setAttribute(
+  if (mode === "ready") {
+    setOfflineProgress(1);
+    offlineDownloadControl.setAttribute(
       "aria-label",
-      complete
-        ? "Playlist disponibile offline"
-        : "Gestisci ascolto offline"
+      "Playlist disponibile offline. Tocca per rimuovere il download."
     );
+    offlineDownloadControl.title =
+      "Disponibile offline · tocca per rimuovere";
+    return;
   }
+
+  if (mode === "partial") {
+    setOfflineProgress(progress);
+    offlineDownloadControl.setAttribute(
+      "aria-label",
+      `Download parziale ${Math.round(progress * 100)}%. Tocca per continuare.`
+    );
+    offlineDownloadControl.title =
+      `Download parziale · ${Math.round(progress * 100)}%`;
+    return;
+  }
+
+  if (mode === "preparing") {
+    offlineProgressRing.style.strokeDasharray = "24 95.38";
+    offlineProgressRing.style.strokeDashoffset = "0";
+    offlinePercent.textContent = "0%";
+    offlineDownloadControl.setAttribute(
+      "aria-label",
+      "Preparazione del download offline"
+    );
+    offlineDownloadControl.title = "Preparazione download…";
+    return;
+  }
+
+  if (mode === "downloading") {
+    setOfflineProgress(progress);
+    offlineDownloadControl.setAttribute(
+      "aria-label",
+      `Download in corso ${Math.round(progress * 100)}%`
+    );
+    offlineDownloadControl.title =
+      `Download in corso · ${Math.round(progress * 100)}%`;
+    return;
+  }
+
+  if (mode === "error") {
+    setOfflineProgress(0);
+    offlineDownloadControl.setAttribute(
+      "aria-label",
+      "Download offline non riuscito. Tocca per riprovare."
+    );
+    offlineDownloadControl.title = "Download non riuscito · tocca per riprovare";
+    return;
+  }
+
+  setOfflineProgress(0);
+  offlineDownloadControl.setAttribute(
+    "aria-label",
+    "Scarica la playlist per ascoltarla senza Internet"
+  );
+  offlineDownloadControl.title = "Scarica per ascoltare offline";
 }
 
 function renderOfflineStatus(status) {
-  if (!offlineBadge || !offlineStatus) return;
-
   const {
-    completeTracks = 0,
-    totalTracks = tracks.length,
     cachedResources = 0,
+    totalResources = tracks.length * 4,
     complete = false,
   } = status || {};
 
-  offlineBadge.classList.remove("ready", "error");
-  setOfflineTriggerState(complete);
+  offlineComplete = Boolean(complete);
 
   if (complete) {
-    offlineBadge.textContent = "Disponibile offline";
-    offlineBadge.classList.add("ready");
-    offlineStatus.textContent =
-      `Tutti i ${totalTracks} brani sono salvati su questo dispositivo.`;
-    offlineDownloadBtn.classList.add("hidden");
-    offlineDownloadBtn.disabled = true;
-  } else {
-    offlineDownloadBtn.classList.remove("hidden");
-    offlineDownloadBtn.disabled = offlineBusy;
-
-    if (completeTracks > 0) {
-      offlineBadge.textContent = "Download parziale";
-      offlineStatus.textContent =
-        `${completeTracks}/${totalTracks} brani disponibili offline. Puoi completare il download quando vuoi.`;
-      offlineDownloadBtn.textContent = "Completa download";
-    } else {
-      offlineBadge.textContent = "Non scaricata";
-      offlineStatus.textContent =
-        "La playlist non è ancora disponibile interamente senza Internet.";
-      offlineDownloadBtn.textContent = "Scarica playlist · ~125 MB";
-    }
+    setOfflineControlState("ready", 1);
+    return;
   }
 
-  offlineRemoveBtn.classList.toggle("hidden", cachedResources === 0);
-  offlineRemoveBtn.disabled = offlineBusy;
+  if (cachedResources > 0 && totalResources > 0) {
+    setOfflineControlState(
+      "partial",
+      Math.min(cachedResources / totalResources, 0.99)
+    );
+    return;
+  }
+
+  setOfflineControlState("idle", 0);
 }
 
 async function getServiceWorkerTarget() {
@@ -753,13 +785,12 @@ async function requestOfflineStatus() {
   try {
     await sendServiceWorkerMessage("GET_OFFLINE_STATUS");
   } catch (error) {
-    setOfflineTriggerState(false);
-    offlineBadge.textContent = "Non disponibile";
-    offlineBadge.classList.add("error");
-    offlineStatus.textContent =
-      "Il download offline non è disponibile in questo browser.";
-    offlineDownloadBtn.classList.remove("hidden");
-    offlineDownloadBtn.disabled = true;
+    setOfflineControlState("error");
+    if (offlineDownloadControl) {
+      offlineDownloadControl.disabled = true;
+      offlineDownloadControl.title =
+        "Il download offline non è disponibile in questo browser";
+    }
   }
 }
 
@@ -774,43 +805,86 @@ async function hasEnoughOfflineStorage() {
   return estimate.quota - estimate.usage >= OFFLINE_ESTIMATE_BYTES;
 }
 
+async function startOfflineDownload() {
+  if (offlineBusy) return;
+
+  try {
+    const enoughStorage = await hasEnoughOfflineStorage();
+    if (!enoughStorage) {
+      setOfflineControlState("error");
+      window.alert(
+        "Spazio insufficiente: servono circa 125 MB liberi, più un piccolo margine per il browser."
+      );
+      return;
+    }
+
+    offlineBusy = true;
+    offlineDownloadControl.disabled = true;
+    setOfflineControlState("preparing", 0);
+
+    if (navigator.storage?.persist) {
+      navigator.storage.persist().catch(() => false);
+    }
+
+    await sendServiceWorkerMessage("CACHE_OFFLINE_LIBRARY");
+  } catch (error) {
+    offlineBusy = false;
+    offlineDownloadControl.disabled = false;
+    setOfflineControlState("error");
+  }
+}
+
+async function removeOfflineDownload() {
+  if (offlineBusy) return;
+
+  const confirmed = window.confirm(
+    "Rimuovere da questo dispositivo la playlist scaricata per l'ascolto offline?"
+  );
+  if (!confirmed) return;
+
+  offlineBusy = true;
+  offlineDownloadControl.disabled = true;
+  setOfflineControlState("preparing", 0);
+
+  try {
+    await sendServiceWorkerMessage("REMOVE_OFFLINE_LIBRARY");
+  } catch (error) {
+    offlineBusy = false;
+    offlineDownloadControl.disabled = false;
+    setOfflineControlState("error");
+  }
+}
+
 function setupOfflineControls() {
   if (
-    !offlineOpenBtn ||
-    !offlineModal ||
-    !offlineDownloadBtn ||
-    !offlineRemoveBtn
+    !offlineDownloadControl ||
+    !offlineProgressRing ||
+    !offlinePercent ||
+    !offlineDownloadGlyph ||
+    !offlineCheckGlyph
   ) {
     return;
   }
 
-  offlineOpenBtn.addEventListener("click", openOfflineModal);
-  offlineCloseBtn?.addEventListener("click", closeOfflineModal);
-
-  offlineModal.addEventListener("click", (event) => {
-    if (event.target.matches("[data-offline-close]")) {
-      closeOfflineModal();
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (
-      event.key === "Escape" &&
-      !offlineModal.classList.contains("hidden")
-    ) {
-      closeOfflineModal();
-    }
-  });
+  setOfflineControlState("idle", 0);
 
   if (!("serviceWorker" in navigator)) {
-    setOfflineTriggerState(false);
-    offlineBadge.textContent = "Non supportato";
-    offlineBadge.classList.add("error");
-    offlineStatus.textContent =
-      "Questo browser non supporta il download della playlist per l'ascolto offline.";
-    offlineDownloadBtn.disabled = true;
+    setOfflineControlState("error");
+    offlineDownloadControl.disabled = true;
+    offlineDownloadControl.title =
+      "Il download offline non è disponibile in questo browser";
     return;
   }
+
+  offlineDownloadControl.addEventListener("click", () => {
+    if (offlineBusy) return;
+
+    if (offlineComplete) {
+      removeOfflineDownload();
+    } else {
+      startOfflineDownload();
+    }
+  });
 
   navigator.serviceWorker.addEventListener("message", (event) => {
     const data = event.data || {};
@@ -822,118 +896,42 @@ function setupOfflineControls() {
 
     if (data.type === "OFFLINE_PROGRESS") {
       offlineBusy = true;
-      setOfflineTriggerState(false);
-      offlineTriggerLabel.textContent = "Scaricamento…";
-      offlineProgress.classList.remove("hidden");
-      offlineProgress.setAttribute("aria-hidden", "false");
-      setOfflineProgress(data.completedTracks, data.totalTracks);
-      offlineBadge.textContent = "Scaricamento";
-      offlineBadge.classList.remove("ready", "error");
-      offlineStatus.textContent =
-        `${data.completedTracks}/${data.totalTracks} · ${data.file}`;
-      offlineDownloadBtn.classList.remove("hidden");
-      offlineDownloadBtn.textContent = "Scaricamento in corso…";
-      offlineDownloadBtn.disabled = true;
-      offlineRemoveBtn.disabled = true;
+      const progress =
+        data.totalTracks > 0
+          ? data.completedTracks / data.totalTracks
+          : 0;
+      setOfflineControlState("downloading", progress);
       return;
     }
 
     if (data.type === "OFFLINE_COMPLETE") {
       offlineBusy = false;
-      offlineProgress.classList.add("hidden");
-      offlineProgress.setAttribute("aria-hidden", "true");
-      setOfflineProgress(0, 1);
+      offlineDownloadControl.disabled = false;
 
-      renderOfflineStatus(data);
-
-      if (!data.complete && data.errors > 0) {
-        offlineBadge.textContent = "Download incompleto";
-        offlineBadge.classList.add("error");
-        offlineStatus.textContent =
-          `${data.completeTracks}/${data.totalTracks} brani disponibili. Riprova con una connessione stabile.`;
+      if (data.complete) {
+        offlineComplete = true;
+        setOfflineControlState("ready", 1);
+      } else {
+        offlineComplete = false;
+        const progress =
+          data.totalResources > 0
+            ? data.cachedResources / data.totalResources
+            : data.totalTracks > 0
+              ? data.completeTracks / data.totalTracks
+              : 0;
+        setOfflineControlState(
+          data.errors > 0 ? "error" : "partial",
+          progress
+        );
       }
       return;
     }
 
     if (data.type === "OFFLINE_REMOVED") {
       offlineBusy = false;
-      offlineProgress.classList.add("hidden");
-      offlineProgress.setAttribute("aria-hidden", "true");
-      setOfflineProgress(0, 1);
-      renderOfflineStatus(data);
-    }
-  });
-
-  offlineDownloadBtn.addEventListener("click", async () => {
-    if (offlineBusy) return;
-
-    try {
-      const enoughStorage = await hasEnoughOfflineStorage();
-      if (!enoughStorage) {
-        offlineBadge.textContent = "Spazio insufficiente";
-        offlineBadge.classList.add("error");
-        offlineStatus.textContent =
-          "Servono circa 125 MB liberi, più un piccolo margine per il browser.";
-        return;
-      }
-
-      offlineBusy = true;
-      setOfflineTriggerState(false);
-      offlineTriggerLabel.textContent = "Scaricamento…";
-      offlineDownloadBtn.classList.remove("hidden");
-      offlineDownloadBtn.textContent = "Preparazione…";
-      offlineDownloadBtn.disabled = true;
-      offlineRemoveBtn.disabled = true;
-      offlineProgress.classList.remove("hidden");
-      offlineProgress.setAttribute("aria-hidden", "false");
-      setOfflineProgress(0, tracks.length);
-      offlineBadge.textContent = "Preparazione";
-      offlineBadge.classList.remove("ready", "error");
-      offlineStatus.textContent = "Avvio download della playlist…";
-
-      if (navigator.storage?.persist) {
-        navigator.storage.persist().catch(() => false);
-      }
-
-      await sendServiceWorkerMessage("CACHE_OFFLINE_LIBRARY");
-    } catch (error) {
-      offlineBusy = false;
-      setOfflineTriggerState(false);
-      offlineBadge.textContent = "Errore";
-      offlineBadge.classList.add("error");
-      offlineStatus.textContent = error.message;
-      offlineDownloadBtn.textContent = "Riprova download";
-      offlineDownloadBtn.disabled = false;
-      offlineRemoveBtn.disabled = false;
-    }
-  });
-
-  offlineRemoveBtn.addEventListener("click", async () => {
-    if (offlineBusy) return;
-    if (
-      !window.confirm(
-        "Rimuovere da questo dispositivo i brani scaricati per l'ascolto offline?"
-      )
-    ) {
-      return;
-    }
-
-    offlineBusy = true;
-    offlineDownloadBtn.disabled = true;
-    offlineRemoveBtn.disabled = true;
-    offlineBadge.textContent = "Rimozione";
-    offlineBadge.classList.remove("ready", "error");
-    offlineStatus.textContent = "Rimozione dei brani scaricati…";
-
-    try {
-      await sendServiceWorkerMessage("REMOVE_OFFLINE_LIBRARY");
-    } catch (error) {
-      offlineBusy = false;
-      offlineBadge.textContent = "Errore";
-      offlineBadge.classList.add("error");
-      offlineStatus.textContent = error.message;
-      offlineDownloadBtn.disabled = false;
-      offlineRemoveBtn.disabled = false;
+      offlineComplete = false;
+      offlineDownloadControl.disabled = false;
+      setOfflineControlState("idle", 0);
     }
   });
 

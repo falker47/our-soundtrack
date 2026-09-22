@@ -58,8 +58,26 @@ for (const value of [manifest.start_url, manifest.scope, ...manifest.icons.map((
 
 const index = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const script = fs.readFileSync(path.join(root, "script.js"), "utf8");
+const styles = fs.readFileSync(path.join(root, "style.css"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
-const currentSources = [index, script, serviceWorker].join("\n");
+const currentSources = [index, script, styles, serviceWorker].join("\n");
+
+if (!index.startsWith("<!DOCTYPE html>")) {
+  throw new Error("index.html must begin with <!DOCTYPE html> and contain no stray markup before it.");
+}
+
+for (const id of [
+  "offlineDownloadControl",
+  "offlineProgressRing",
+  "offlinePercent",
+  "offlineDownloadGlyph",
+  "offlineCheckGlyph",
+]) {
+  const occurrences = index.split(`id="${id}"`).length - 1;
+  if (occurrences !== 1) {
+    throw new Error(`Expected exactly one ${id}, found ${occurrences}.`);
+  }
+}
 
 const catalogPos = index.indexOf('src="soundtrack-catalog.js"');
 const appPos = index.indexOf('src="script.js"');
@@ -94,31 +112,48 @@ if (script.includes("preloadAllResources") || script.includes("preloadAudio(")) 
 }
 
 for (const id of [
-  "offlineOpenBtn",
+  "offlineDownloadControl",
+  "offlineProgressRing",
+  "offlinePercent",
+  "offlineDownloadGlyph",
+  "offlineCheckGlyph",
+]) {
+  if (!index.includes(`id="${id}"`)) {
+    throw new Error(`Missing compact download control element: ${id}`);
+  }
+}
+
+for (const removedId of [
   "offlineModal",
-  "offlineCloseBtn",
+  "offlineOpenBtn",
   "offlineDownloadBtn",
   "offlineRemoveBtn",
   "offlineStatus",
   "offlineProgress",
 ]) {
-  if (!index.includes(`id="${id}"`)) {
-    throw new Error(`Missing offline UI control: ${id}`);
+  if (index.includes(`id="${removedId}"`)) {
+    throw new Error(`Obsolete offline panel UI is still present: ${removedId}`);
   }
 }
 
-for (const technicalCopy of [
-  "Solo app",
-  "L'app è installabile offline",
-  "Service Worker non disponibile.",
-]) {
-  if (index.includes(technicalCopy) || script.includes(technicalCopy)) {
-    throw new Error(`Technical offline copy leaked into listener-facing UI: ${technicalCopy}`);
-  }
+if (index.includes("Ascolta senza Internet")) {
+  throw new Error("Obsolete offline explanatory panel copy is still present.");
 }
 
-if (!index.includes("Ascolta senza Internet")) {
-  throw new Error("Offline panel must use listener-facing language.");
+if (!script.includes('setOfflineControlState("downloading"')) {
+  throw new Error("Download icon is missing its progress state.");
+}
+
+if (!script.includes('setOfflineControlState("ready"')) {
+  throw new Error("Download icon is missing its completed state.");
+}
+
+if (!styles.includes(".offline-progress-ring") || !styles.includes("@keyframes offline-ring-spin")) {
+  throw new Error("Animated circular download progress styling is missing.");
+}
+
+if (!script.includes("offlinePercent.textContent")) {
+  throw new Error("Download progress percentage is not rendered inside the icon.");
 }
 
 if (currentSources.includes("images/cover.jpg")) {
