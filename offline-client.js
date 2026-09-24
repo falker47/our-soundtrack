@@ -1,10 +1,155 @@
 (() => {
   const OFFLINE_ESTIMATE_BYTES = 150 * 1024 * 1024;
   const OFFLINE_RING_LENGTH = 2 * Math.PI * 19;
+  const INSTALL_NUDGE_STORAGE_KEY = "our-soundtrack-install-nudge-v1";
 
   let offlineBusy = false;
   let offlineComplete = false;
   let elements = null;
+  let installElements = null;
+  let deferredInstallPrompt = null;
+  let installNudgeMode = "hidden";
+  let installNudgeShown = false;
+  let installListenersBound = false;
+  let offlineDownloadRequested = false;
+
+  function isIosLike(userAgent = "", platform = "", maxTouchPoints = 0) {
+    const ua = String(userAgent);
+    const currentPlatform = String(platform);
+
+    return (
+      /iPad|iPhone|iPod/.test(ua) ||
+      (currentPlatform === "MacIntel" && Number(maxTouchPoints) > 1)
+    );
+  }
+
+  function resolveInstallNudgeMode({
+    standalone = false,
+    ios = false,
+    canPrompt = false,
+    handled = false,
+  } = {}) {
+    if (standalone || handled) return "hidden";
+    if (canPrompt) return "native";
+    if (ios) return "ios";
+    return "hidden";
+  }
+
+  function isStandaloneDisplay() {
+    return Boolean(
+      globalThis.matchMedia?.("(display-mode: standalone)")?.matches ||
+        globalThis.navigator?.standalone === true
+    );
+  }
+
+  function hasHandledInstallNudge() {
+    try {
+      return globalThis.localStorage?.getItem(INSTALL_NUDGE_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function markInstallNudgeHandled() {
+    try {
+      globalThis.localStorage?.setItem(INSTALL_NUDGE_STORAGE_KEY, "1");
+    } catch {
+      // Storage may be unavailable in private/restricted browsing contexts.
+    }
+  }
+
+  function hideInstallNudge() {
+    if (installElements?.installNudge) {
+      installElements.installNudge.hidden = true;
+    }
+  }
+
+  function currentInstallNudgeMode() {
+    const navigatorRef = globalThis.navigator || {};
+    return resolveInstallNudgeMode({
+      standalone: isStandaloneDisplay(),
+      ios: isIosLike(
+        navigatorRef.userAgent,
+        navigatorRef.platform,
+        navigatorRef.maxTouchPoints
+      ),
+      canPrompt: Boolean(deferredInstallPrompt),
+      handled: hasHandledInstallNudge(),
+    });
+  }
+
+  function maybeShowInstallNudge() {
+    if (!offlineDownloadRequested || installNudgeShown || !installElements) return;
+
+    const mode = currentInstallNudgeMode();
+    if (mode === "hidden") return;
+
+    installNudgeMode = mode;
+    installNudgeShown = true;
+    markInstallNudgeHandled();
+
+    if (mode === "native") {
+      installElements.installNudgeText.textContent =
+        "Il download è partito. Aggiungi Our Soundtrack alla schermata Home per aprirlo come un'app.";
+      installElements.installNudgeAction.textContent = "Aggiungi";
+    } else {
+      installElements.installNudgeText.textContent =
+        "Il download è partito. Su iPhone/iPad usa Condividi → Aggiungi alla schermata Home, poi aprilo come app web.";
+      installElements.installNudgeAction.textContent = "Capito";
+    }
+
+    installElements.installNudge.hidden = false;
+  }
+
+  async function handleInstallNudgeAction() {
+    if (installNudgeMode !== "native" || !deferredInstallPrompt) {
+      hideInstallNudge();
+      return;
+    }
+
+    const promptEvent = deferredInstallPrompt;
+    deferredInstallPrompt = null;
+    hideInstallNudge();
+
+    try {
+      await promptEvent.prompt();
+      await promptEvent.userChoice;
+    } catch {
+      // The install choice remains entirely under browser/user control.
+    }
+  }
+
+  function setupInstallNudge() {
+    installElements = {
+      installNudge: document.getElementById("installNudge"),
+      installNudgeText: document.getElementById("installNudgeText"),
+      installNudgeLater: document.getElementById("installNudgeLater"),
+      installNudgeAction: document.getElementById("installNudgeAction"),
+    };
+
+    if (Object.values(installElements).some((element) => !element)) return;
+
+    installElements.installNudgeLater.addEventListener("click", hideInstallNudge);
+    installElements.installNudgeAction.addEventListener(
+      "click",
+      handleInstallNudgeAction
+    );
+
+    if (installListenersBound) return;
+    installListenersBound = true;
+
+    globalThis.addEventListener?.("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      maybeShowInstallNudge();
+    });
+
+    globalThis.addEventListener?.("appinstalled", () => {
+      deferredInstallPrompt = null;
+      markInstallNudgeHandled();
+      hideInstallNudge();
+    });
+  }
 
   function deriveOfflineState(status, fallbackTotalResources = 0) {
     const cachedResources = Number(status?.cachedResources) || 0;
@@ -216,6 +361,7 @@
       }
 
       offlineBusy = true;
+      offlineDownloadRequested = true;
       offlineDownloadControl.disabled = true;
       setOfflineControlState("preparing", 0);
 
@@ -226,6 +372,7 @@
       await sendServiceWorkerMessage("CACHE_OFFLINE_LIBRARY");
     } catch {
       offlineBusy = false;
+      offlineDownloadRequested = false;
       offlineDownloadControl.disabled = false;
       setOfflineControlState("error");
     }
@@ -267,6 +414,7 @@
 
     if (data.type === "OFFLINE_PROGRESS") {
       offlineBusy = true;
+      maybeShowInstallNudge();
       const progress =
         data.totalTracks > 0 ? data.completedTracks / data.totalTracks : 0;
       setOfflineControlState("downloading", progress);
@@ -377,12 +525,15 @@
   }
 
   function init() {
+    setupInstallNudge();
     return registerServiceWorker().finally(setupOfflineControls);
   }
 
   globalThis.SoundtrackOffline = Object.freeze({
     deriveOfflineState,
     completionProgress,
+    isIosLike,
+    resolveInstallNudgeMode,
     setupOfflineControls,
     registerServiceWorker,
     init,
