@@ -7,7 +7,7 @@ if (!serviceWorkerCore) {
 
 const { rangeResponse, summarizeOfflineMatches } = serviceWorkerCore;
 
-const APP_CACHE_NAME = "our-soundtrack-app-v7";
+const APP_CACHE_NAME = "our-soundtrack-app-v8";
 const MEDIA_CACHE_NAME = "our-soundtrack-media-v1";
 
 const APP_SHELL = [
@@ -21,6 +21,7 @@ const APP_SHELL = [
   "service-worker-core.js",
   "manifest.json",
   "images/Album cover front.jpg",
+  "images/pwa-icon-192.svg",
   "images/Album cover retro.jpg",
   "images/favicon.png",
 ];
