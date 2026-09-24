@@ -11,7 +11,7 @@ A personal web music player created as a romantic gift, built around a curated *
 - **Visual experience** with track-specific artwork and video backgrounds.
 - **Lyrics** loaded alongside the selected track.
 - **Responsive mobile UI** with a collapsible playlist drawer.
-- **Installable PWA** scoped correctly for GitHub Pages project hosting.
+- **Installable PWA** scoped correctly for GitHub Pages project hosting, with a one-time install nudge after the first explicit offline download starts.
 - **Opt-in offline library**: the app shell is cached automatically, while the full media catalog is downloaded only on request.
 - **Resumable offline download** with compact progress/completion state and removal from the device.
 - **Offline seeking** for fully cached audio/video through byte-range responses.
@@ -33,7 +33,7 @@ The main responsibilities are intentionally separated:
 - `soundtrack-catalog.js` — canonical 20-track asset map.
 - `player-core.js` — pure playback decisions such as navigation, shuffle/repeat behavior and stale-load generation guards.
 - `script.js` — browser orchestration for the current track, media elements, playlist UI, seeking and lyrics.
-- `offline-client.js` — Service Worker registration, download-state protocol and compact offline control.
+- `offline-client.js` — Service Worker registration, download-state protocol, compact offline control, Android/Chromium install prompt capture and iOS Home Screen guidance.
 - `service-worker-core.js` — directly testable byte-range and offline-cache summary logic.
 - `service-worker.js` — app-shell caching, runtime media caching, explicit full-library download, resume/removal and request routing.
 - `scripts/validate-catalog.mjs` — structural guardrails for catalog assets, PWA scope and the approved offline UX.

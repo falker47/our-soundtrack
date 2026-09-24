@@ -74,6 +74,21 @@ for (const value of [
   }
 }
 
+const iconSizes = new Set(
+  manifest.icons.flatMap((icon) => String(icon.sizes || "").split(/\\s+/).filter(Boolean))
+);
+for (const requiredSize of ["192x192", "512x512"]) {
+  if (!iconSizes.has(requiredSize)) {
+    throw new Error(`Manifest is missing the required Chromium install icon size: ${requiredSize}`);
+  }
+}
+for (const icon of manifest.icons) {
+  const iconPath = path.join(root, icon.src);
+  if (!fs.existsSync(iconPath)) {
+    throw new Error(`Manifest icon does not exist: ${icon.src}`);
+  }
+}
+
 const index = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const script = fs.readFileSync(path.join(root, "script.js"), "utf8");
 const playerCore = fs.readFileSync(path.join(root, "player-core.js"), "utf8");
@@ -113,6 +128,10 @@ for (const id of [
   "offlinePercent",
   "offlineDownloadGlyph",
   "offlineCheckGlyph",
+  "installNudge",
+  "installNudgeText",
+  "installNudgeLater",
+  "installNudgeAction",
 ]) {
   const occurrences = index.split(`id="${id}"`).length - 1;
   if (occurrences !== 1) {
@@ -245,6 +264,26 @@ if (!offlineClient.includes("offlinePercent.textContent")) {
   throw new Error(
     "Download progress percentage is not rendered inside the icon."
   );
+}
+
+if (
+  !offlineClient.includes('"beforeinstallprompt"') ||
+  !offlineClient.includes('"appinstalled"') ||
+  !offlineClient.includes("resolveInstallNudgeMode")
+) {
+  throw new Error("Cross-platform PWA install nudge wiring is missing.");
+}
+
+if (!styles.includes(".install-nudge") || !styles.includes(".install-nudge-button")) {
+  throw new Error("Install nudge styling is missing.");
+}
+
+if (!index.includes('rel="apple-touch-icon"')) {
+  throw new Error("iOS Home Screen icon metadata is missing.");
+}
+
+if (!serviceWorker.includes('"images/pwa-icon-192.svg"')) {
+  throw new Error("App shell is missing the 192px install icon.");
 }
 
 if (!styles.includes("left: 20px;") || !styles.includes("right: auto;")) {

@@ -60,3 +60,73 @@ test("completion progress prefers exact resource counts and falls back to tracks
     0.25
   );
 });
+
+
+test("install nudge prefers the browser-native prompt when available", () => {
+  assert.equal(
+    offline.resolveInstallNudgeMode({
+      standalone: false,
+      ios: false,
+      canPrompt: true,
+      handled: false,
+    }),
+    "native"
+  );
+});
+
+test("install nudge falls back to iOS Home Screen instructions", () => {
+  assert.equal(
+    offline.resolveInstallNudgeMode({
+      standalone: false,
+      ios: true,
+      canPrompt: false,
+      handled: false,
+    }),
+    "ios"
+  );
+  assert.equal(
+    offline.resolveInstallNudgeMode({
+      standalone: true,
+      ios: true,
+      canPrompt: false,
+      handled: false,
+    }),
+    "hidden"
+  );
+  assert.equal(
+    offline.resolveInstallNudgeMode({
+      standalone: false,
+      ios: true,
+      canPrompt: false,
+      handled: true,
+    }),
+    "hidden"
+  );
+});
+
+test("iOS detection covers iPhone and iPadOS desktop-class user agents", () => {
+  assert.equal(
+    offline.isIosLike(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
+      "iPhone",
+      5
+    ),
+    true
+  );
+  assert.equal(
+    offline.isIosLike(
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)",
+      "MacIntel",
+      5
+    ),
+    true
+  );
+  assert.equal(
+    offline.isIosLike(
+      "Mozilla/5.0 (Linux; Android 16)",
+      "Linux armv8l",
+      5
+    ),
+    false
+  );
+});

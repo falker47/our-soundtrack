@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Our Soundtrack</title>
     <link rel="icon" type="image/png" href="images/favicon.png" />
+    <link rel="apple-touch-icon" href="images/Album cover front.jpg" />
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#b91dae" />
 
@@ -202,6 +203,38 @@
         </div>
       </main>
     </div>
+
+    <!-- Install nudge: shown once after the first explicit offline download starts -->
+    <aside
+      id="installNudge"
+      class="install-nudge"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="installNudgeTitle"
+      aria-describedby="installNudgeText"
+      hidden
+    >
+      <div class="install-nudge-copy">
+        <strong id="installNudgeTitle" class="install-nudge-title">Aggiungi alla Home</strong>
+        <p id="installNudgeText" class="install-nudge-text"></p>
+      </div>
+      <div class="install-nudge-actions">
+        <button
+          id="installNudgeLater"
+          class="install-nudge-button secondary"
+          type="button"
+        >
+          Non ora
+        </button>
+        <button
+          id="installNudgeAction"
+          class="install-nudge-button primary"
+          type="button"
+        >
+          Aggiungi
+        </button>
+      </div>
+    </aside>
 
     <!-- Audio element (nascosto) -->
     <audio id="audioPlayer" preload="metadata"></audio>
