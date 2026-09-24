@@ -75,7 +75,7 @@ for (const value of [
 }
 
 const iconSizes = new Set(
-  manifest.icons.flatMap((icon) => String(icon.sizes || "").split(/\\s+/).filter(Boolean))
+  manifest.icons.flatMap((icon) => String(icon.sizes || "").split(/\s+/).filter(Boolean))
 );
 for (const requiredSize of ["192x192", "512x512"]) {
   if (!iconSizes.has(requiredSize)) {
